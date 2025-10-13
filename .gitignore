@@ -1,0 +1,11 @@
+/.ccls
+/.pio/
+/.cache/
+/bin/
+/lib/
+/compile_commands.json
+
+# temporarily ignore
+/pio
+/platforms
+/lib/*
