@@ -1,6 +1,7 @@
 #pragma once
 
 #include "exec/Error.h"
+#include "exec/executor/Executor.h"
 #include "exec/os/Service.h"
 #include "exec/sm/Initiator.h"
 #include "exec/sm/Operation.h"
@@ -35,6 +36,7 @@ class Interrupt : public Service {
             }
 
             fired_ = false;
+            *ec = ErrCode::Success;
             return cb;
         };
     }
@@ -43,6 +45,7 @@ class Interrupt : public Service {
         func_ = func;
     }
 
+    // Service
     void tick() override {
         if (!fired_) {
             return;
@@ -51,7 +54,7 @@ class Interrupt : public Service {
         fired_ = false;
 
         if (op_.outstanding()) {
-            op_.complete(ErrCode::Success)->runAll();
+            executor()->post(op_.complete(ErrCode::Success));
         }
     }
 

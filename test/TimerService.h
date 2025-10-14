@@ -24,8 +24,6 @@ class TimerService : public exec::TimerService {
         return remove_result;
     }
 
-    void tick() override {}
-
     void* next_add = nullptr;
     exec::Runnable* last_added = nullptr;
     void* next_remove = nullptr;
