@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdlike/type_traits.h>
 #include <supp/IntrusiveForwardList.h>
 
 namespace exec {

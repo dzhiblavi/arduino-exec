@@ -1,21 +1,15 @@
 #pragma once
 
-#include <exec/os/OS.h>
-
+#include "exec/os/service/TimerService.h"
 #include <unity.h>
 
 namespace test {
 
-class OS : public exec::OS {
+class TimerService : public exec::TimerService {
  public:
-    ~OS() {
+    ~TimerService() {
         TEST_ASSERT_EQUAL(nullptr, next_add);
         TEST_ASSERT_EQUAL(nullptr, next_remove);
-    }
-
-    void defer(exec::Runnable*, ttime::Time) override {
-        LFATAL("not implemented");
-        abort();
     }
 
     void add(exec::TimerEntry* t) override {
@@ -29,6 +23,8 @@ class OS : public exec::OS {
         next_remove = nullptr;
         return remove_result;
     }
+
+    void tick() override {}
 
     void* next_add = nullptr;
     exec::Runnable* last_added = nullptr;

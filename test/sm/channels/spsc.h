@@ -2,7 +2,7 @@
 
 #include <exec/Error.h>
 #include <exec/cancel.h>
-#include <exec/executor/global.h>
+#include <exec/executor/Executor.h>
 
 #include <utest/utest.h>
 

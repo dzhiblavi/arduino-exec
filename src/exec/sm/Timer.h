@@ -1,7 +1,7 @@
 #pragma once
 
 #include "exec/Error.h"
-#include "exec/os/global.h"
+#include "exec/os/service/TimerService.h"
 #include "exec/sm/Initiator.h"
 #include "exec/sm/Operation.h"
 
@@ -31,7 +31,7 @@ class Timer : public Runnable, private CancellationHandler {
         op_.initiate(ec, cb, slot, this);
         entry_.at = ttime::mono::now() + dur;
         entry_.task = this;
-        os()->add(&entry_);
+        timerService()->add(&entry_);
     }
 
     // Runnable, called by the OS when timer goes off
@@ -43,7 +43,7 @@ class Timer : public Runnable, private CancellationHandler {
     Runnable* cancel() override {
         op_.detachCancellation();
 
-        if (!os()->remove(&entry_)) {
+        if (!timerService()->remove(&entry_)) {
             // Timer has already went off or has been cancelled, nothing to do here
             return noop;
         }

@@ -1,6 +1,6 @@
 #include "Executor.h"
 
-#include <exec/executor/global.h>
+#include <exec/executor/Executor.h>
 #include <exec/sm/sync/Semaphore.h>
 
 #include <utest/utest.h>

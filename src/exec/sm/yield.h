@@ -1,6 +1,6 @@
 #pragma once
 
-#include "exec/executor/global.h"
+#include "exec/executor/Executor.h"
 #include "exec/sm/Initiator.h"
 
 namespace exec {

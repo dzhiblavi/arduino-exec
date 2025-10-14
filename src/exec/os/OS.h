@@ -1,18 +1,26 @@
 #pragma once
 
-#include "exec/Runnable.h"
-#include "exec/os/TimerEntry.h"
-
-#include <time/time.h>
+#include "exec/os/Service.h"
 
 namespace exec {
 
-class OS {
+class OS : public Service {
  public:
-    virtual ~OS() = default;
-    virtual void defer(Runnable* r, ttime::Time at) = 0;
-    virtual void add(TimerEntry* t) = 0;
-    virtual bool remove(TimerEntry* t) = 0;
+    template <typename... S>
+    explicit OS(S*... services) {
+        (addService(services), ...);
+    }
+
+    void tick() override {
+        services_.iterate([](Service& s) { s.tick(); });
+    }
+
+    void addService(Service* s) {
+        services_.pushBack(s);
+    }
+
+ private:
+    supp::IntrusiveForwardList<Service> services_;
 };
 
 }  // namespace exec

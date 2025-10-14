@@ -1,6 +1,6 @@
 #include "Executor.h"
 
-#include <exec/executor/global.h>
+#include <exec/executor/Executor.h>
 #include <exec/sm/io/Stream.h>
 
 #include <supp/CircularBuffer.h>

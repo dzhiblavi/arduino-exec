@@ -1,14 +1,13 @@
-#include "OS.h"
+#include "TimerService.h"
 
-#include <exec/os/global.h>
 #include <exec/sm/Timer.h>
 
 #include <utest/utest.h>
 
-test::OS test_os;
+test::TimerService svc;
 
 void globalSetUp() {
-    exec::setOS(&test_os);
+    exec::setTimerService(&svc);
 }
 
 void setUp() {
@@ -25,7 +24,7 @@ TEST(test_timer_enqueues) {
     ErrCode ec = ErrCode::Unknown;
     Timer t;
 
-    test_os.next_add = &t;
+    svc.next_add = &t;
     TEST_ASSERT_TRUE(noop == t.wait(ttime::Duration(), &ec)(&cb));
 }
 
@@ -35,7 +34,7 @@ TEST(test_timer_installs_cancellation) {
     Timer t;
     CancellationSignal sig;
 
-    test_os.next_add = &t;
+    svc.next_add = &t;
     t.wait(ttime::Duration(), &ec)(&cb, sig.slot());
     TEST_ASSERT_TRUE(sig.hasHandler());
 }
@@ -46,10 +45,10 @@ TEST(test_timer_goes_off) {
     Timer t;
     CancellationSignal sig;
 
-    test_os.next_add = &t;
+    svc.next_add = &t;
     t.wait(ttime::Duration(), &ec)(&cb, sig.slot());
 
-    TEST_ASSERT_EQUAL(&cb, test_os.last_added->run());
+    TEST_ASSERT_EQUAL(&cb, svc.last_added->run());
     TEST_ASSERT_FALSE(sig.hasHandler());
 }
 
@@ -59,11 +58,11 @@ TEST(test_timer_cancel_success) {
     Timer t;
     CancellationSignal sig;
 
-    test_os.next_add = &t;
+    svc.next_add = &t;
     t.wait(ttime::Duration(), &ec)(&cb, sig.slot());
 
-    test_os.next_remove = &t;
-    test_os.remove_result = true;
+    svc.next_remove = &t;
+    svc.remove_result = true;
     TEST_ASSERT_EQUAL(&cb, sig.emitRaw());
     TEST_ASSERT_FALSE(sig.hasHandler());
     TEST_ASSERT_EQUAL(ErrCode::Cancelled, ec);
@@ -76,15 +75,15 @@ TEST(test_timer_cancel_too_late) {
     Timer t;
     CancellationSignal sig;
 
-    test_os.next_add = &t;
+    svc.next_add = &t;
     t.wait(ttime::Duration(), &ec)(&cb, sig.slot());
 
-    test_os.next_remove = &t;
-    test_os.remove_result = false;
+    svc.next_remove = &t;
+    svc.remove_result = false;
 
     TEST_ASSERT_EQUAL(noop, sig.emitRaw());
     TEST_ASSERT_FALSE(sig.hasHandler());
-    TEST_ASSERT_EQUAL(&cb, test_os.last_added->run());
+    TEST_ASSERT_EQUAL(&cb, svc.last_added->run());
     TEST_ASSERT_EQUAL(ErrCode::Success, ec);
 }
 

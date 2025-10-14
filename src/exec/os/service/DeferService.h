@@ -1,0 +1,49 @@
+#pragma once
+
+#include "exec/Runnable.h"
+#include "exec/executor/Executor.h"
+#include "exec/os/Service.h"
+
+#include <supp/PriorityQueue.h>
+
+#include <time/mono.h>
+
+namespace exec {
+
+class DeferService {
+ public:
+    virtual ~DeferService() = default;
+    virtual void defer(Runnable* r, ttime::Time at) = 0;
+};
+
+template <int MaxDefers>
+class DeferServiceImpl : public DeferService, public Service {
+ public:
+    DeferServiceImpl() = default;
+
+    void defer(Runnable* r, ttime::Time at) override {
+        defer_.push(Defer{at, r});
+    }
+
+    void tick() override {
+        auto now = ttime::mono::now();
+
+        while (!defer_.empty() && now >= defer_.front().at) {
+            executor()->post(defer_.pop().task);
+        }
+    }
+
+ private:
+    struct Defer {  // NOLINT
+        ttime::Time at;
+        Runnable* task;
+    };
+
+    using Comp = decltype([](auto& l, auto& r) { return l.at < r.at; });
+    supp::PriorityQueue<Defer, MaxDefers, Comp> defer_;
+};
+
+DeferService* deferService();
+void setDeferService(DeferService* s);
+
+}  // namespace exec

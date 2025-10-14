@@ -1,7 +1,7 @@
 #pragma once
 
 #include "exec/Error.h"
-#include "exec/executor/global.h"
+#include "exec/executor/Executor.h"
 #include "exec/sm/Initiator.h"
 #include "exec/sm/Operation.h"
 
