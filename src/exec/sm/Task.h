@@ -53,8 +53,9 @@ class CoTask : public TaskBase {
 };
 
 template <typename T>
-concept Task = requires(T& task) {
-    { static_cast<TaskBase&>(task) };
+concept Task = requires(T& t) {
+    { t.start() } -> Initiator;
+    { t.finish() } -> stdlike::same_as<Runnable*>;
 };
 
 template <typename T>
