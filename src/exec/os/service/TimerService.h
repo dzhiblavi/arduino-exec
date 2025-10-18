@@ -39,24 +39,24 @@ class HeapTimerService : public TimerService, public Service {
 
     void add(TimerEntry* t) override {
         DASSERT(!t->connected());
-        timers_.push(t);
+        heap_.push(t);
     }
 
     bool remove(TimerEntry* t) override {
-        return timers_.erase(t);
+        return heap_.erase(t);
     }
 
     void tick() override {
         auto now = ttime::mono::now();
 
-        while (!timers_.empty() && now >= timers_.front()->at) {
-            executor()->post(timers_.pop()->task);
+        while (!heap_.empty() && now >= heap_.front()->at) {
+            executor()->post(heap_.pop()->task);
         }
     }
 
  private:
     using Comp = decltype([](auto& l, auto& r) { return l.at < r.at; });
-    supp::IntrusivePriorityQueue<TimerEntry, MaxTimers, Comp> timers_;
+    supp::IntrusivePriorityQueue<TimerEntry, MaxTimers, Comp> heap_;
 };
 
 }  // namespace exec

@@ -31,14 +31,14 @@ class HeapDeferService : public DeferService, public Service {
     }
 
     void defer(Runnable* r, ttime::Time at) override {
-        defer_.push(Defer{at, r});
+        heap_.push(Defer{at, r});
     }
 
     void tick() override {
         auto now = ttime::mono::now();
 
-        while (!defer_.empty() && now >= defer_.front().at) {
-            executor()->post(defer_.pop().task);
+        while (!heap_.empty() && now >= heap_.front().at) {
+            executor()->post(heap_.pop().task);
         }
     }
 
@@ -49,7 +49,7 @@ class HeapDeferService : public DeferService, public Service {
     };
 
     using Comp = decltype([](auto& l, auto& r) { return l.at < r.at; });
-    supp::PriorityQueue<Defer, MaxDefers, Comp> defer_;
+    supp::PriorityQueue<Defer, MaxDefers, Comp> heap_;
 };
 
 }  // namespace exec
