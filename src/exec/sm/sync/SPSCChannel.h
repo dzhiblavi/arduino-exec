@@ -8,8 +8,7 @@
 #include <supp/CircularBuffer.h>
 #include <supp/Pinned.h>
 
-#include <stdlike/array.h>
-#include <stdlike/utility.h>
+#include <utility>
 
 #include <log.h>
 
@@ -22,8 +21,8 @@ class SPSCChannel : supp::Pinned {
     SPSCChannel() = default;
 
     [[nodiscard]] Initiator auto send(T value, ErrCode* ec) {
-        return [this, ec, value = stdlike::move(value)](Runnable* cb, CancellationSlot slot = {}) {
-            return send(stdlike::move(value), ec, cb, slot);
+        return [this, ec, value = std::move(value)](Runnable* cb, CancellationSlot slot = {}) {
+            return send(std::move(value), ec, cb, slot);
         };
     }
 
@@ -51,7 +50,7 @@ class SPSCChannel : supp::Pinned {
             // We are the sender, that makes parked_ a blocked receiver.
             DASSERT(size() == 0);
 
-            *dst_ = stdlike::move(value);  // NOLINT
+            *dst_ = std::move(value);  // NOLINT
             executor()->post(parked_.complete(ErrCode::Success));
 
             *ec = ErrCode::Success;
@@ -60,13 +59,13 @@ class SPSCChannel : supp::Pinned {
 
         // No parked receiver, try to enqueue a new element
         if (!filled()) {
-            buf_.push(stdlike::move(value));
+            buf_.push(std::move(value));
             *ec = ErrCode::Success;
             return cb;
         }
 
         // Buffer is filled, parking
-        item_ = stdlike::move(value);  // NOLINT
+        item_ = std::move(value);  // NOLINT
         parked_.initiate(ec, cb, slot);
         return noop;
     }
@@ -80,7 +79,7 @@ class SPSCChannel : supp::Pinned {
             *ec = ErrCode::Success;
             executor()->post(cb);
 
-            buf_.push(stdlike::move(item_));  // NOLINT
+            buf_.push(std::move(item_));  // NOLINT
             return parked_.complete(ErrCode::Success);
         }
 

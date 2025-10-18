@@ -9,8 +9,8 @@
 #include <supp/IntrusiveList.h>
 #include <supp/Pinned.h>
 
-#include <stdlike/array.h>
-#include <stdlike/utility.h>
+#include <array>
+#include <utility>
 
 #include <log.h>
 
@@ -26,7 +26,7 @@ class ChanSendOp : public supp::IntrusiveListNode, CancellableOperation<ChanSend
 
     template <size_t Cap>
     [[nodiscard]] Initiator auto send(MPSCChannel<T, Cap>* chan, T value, ErrCode* ec) {
-        value_ = stdlike::move(value);
+        value_ = std::move(value);
 
         return [this, chan, ec](Runnable* cb, CancellationSlot slot = {}) {
             return chan->send(ec, cb, slot, this);
@@ -82,7 +82,7 @@ class MPSCChannel : supp::Pinned {
             // Parked receiver => queue is empty
             DASSERT(size() == 0 || Capacity == 0);
 
-            *receiver_.dst = stdlike::move(op->value_);
+            *receiver_.dst = std::move(op->value_);
             executor()->post(receiver_.complete(ErrCode::Success));
 
             *ec = ErrCode::Success;
@@ -91,7 +91,7 @@ class MPSCChannel : supp::Pinned {
 
         // No parked receiver, try to enqueue a new element
         if (!filled()) {
-            buf_.push(stdlike::move(op->value_));
+            buf_.push(std::move(op->value_));
             *ec = ErrCode::Success;
             return cb;
         }
@@ -112,7 +112,7 @@ class MPSCChannel : supp::Pinned {
             executor()->post(cb);
 
             auto* sender = senders_.popFront();
-            buf_.push(stdlike::move(sender->value_));
+            buf_.push(std::move(sender->value_));
             return sender->complete(ErrCode::Success);
         }
 

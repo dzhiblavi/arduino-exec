@@ -30,7 +30,7 @@ class TaskBase : public Runnable, public supp::Coro {
     }
 
     Runnable* finish() {
-        return stdlike::exchange(continuation_, noop);
+        return std::exchange(continuation_, noop);
     }
 
     CancellationSlot slot() const {
@@ -55,12 +55,12 @@ class CoTask : public TaskBase {
 template <typename T>
 concept Task = requires(T& t) {
     { t.start() } -> Initiator;
-    { t.finish() } -> stdlike::same_as<Runnable*>;
+    { t.finish() } -> std::same_as<Runnable*>;
 };
 
 template <typename T>
 concept TaskBody = requires(T body, Ctx ctx) {
-    { body(ctx) } -> stdlike::same_as<Runnable*>;
+    { body(ctx) } -> std::same_as<Runnable*>;
 };
 
 template <typename F>
@@ -78,14 +78,14 @@ namespace detail {
 template <TaskBody F>
 struct TaskWrapper : TaskBase {
  public:
-    TaskWrapper(F&& body) : body_(stdlike::forward<F>(body)) {}  // NOLINT
+    TaskWrapper(F&& body) : body_(std::forward<F>(body)) {}  // NOLINT
 
     Runnable* run() final {
         return body_(this);
     }
 
  private:
-    stdlike::remove_reference_t<F> body_;
+    std::remove_reference_t<F> body_;
 };
 
 }  // namespace detail
@@ -102,7 +102,7 @@ auto task(Factory factory) {
 
 template <TaskBody Body>
 auto task(Body&& body) {  // NOLINT
-    return detail::TaskWrapper<Body&&>(stdlike::forward<Body>(body));
+    return detail::TaskWrapper<Body&&>(std::forward<Body>(body));
 }
 
 template <TaskBodyFactory Factory>
@@ -111,7 +111,7 @@ auto task(Factory factory) {
 }
 
 template <typename T>
-using TaskType = decltype(task(stdlike::declval<T>()));
+using TaskType = decltype(task(std::declval<T>()));
 
 }  // namespace exec
 

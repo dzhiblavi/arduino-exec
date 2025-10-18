@@ -5,7 +5,6 @@
     "authors": [],
     "dependencies": {
         "log": "^0.0.1",
-        "stdlike": "^0.0.1",
         "supp": "^0.0.1",
         "time": "^0.0.1"
     },

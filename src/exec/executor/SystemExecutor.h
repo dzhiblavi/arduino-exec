@@ -14,13 +14,13 @@ class SystemExecutor : public Executor, public Service {
     }
 
     void tick() override {
-        auto q = stdlike::move(queue_);
+        auto q = std::move(queue_);
 
         while (!q.empty()) {
             q.popFront()->runAll();
         }
 
-        queue_.prepend(stdlike::move(q));
+        queue_.prepend(std::move(q));
     }
 
  private:

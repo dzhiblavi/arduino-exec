@@ -6,11 +6,11 @@
 #include <supp/Coro.h>
 #include <supp/IntrusiveList.h>
 #include <supp/Pinned.h>
+#include <supp/tuple.h>
 #include <supp/verify.h>
 
-#include <stdlike/array.h>
-#include <stdlike/tuple.h>
-#include <stdlike/utility.h>
+#include <array>
+#include <tuple>
 
 #include <stdint.h>
 
@@ -40,9 +40,9 @@ class ParGroup : Runnable, CancellationHandler {
         static_assert(sizeof...(Init) > 1, "One child does not make sense for ParGroup");
         static_assert(sizeof...(Init) <= Children, "Too many children");
 
-        return [this, inits = stdlike::tuple<Init...>{stdlike::forward<Init>(init)...}](
+        return [this, inits = std::tuple<Init...>{std::forward<Init>(init)...}](
                    Runnable* cb, CancellationSlot slot = {}) mutable {
-            return doWait(cb, slot, stdlike::move(inits));
+            return doWait(cb, slot, std::move(inits));
         };
     }
 
@@ -59,8 +59,7 @@ class ParGroup : Runnable, CancellationHandler {
     };
 
     template <typename... Init>
-    Runnable* doWait(
-        Runnable* cb, CancellationSlot slot, stdlike::tuple<Init...> inits) {  // NOLINT
+    Runnable* doWait(Runnable* cb, CancellationSlot slot, std::tuple<Init...> inits) {  // NOLINT
         cb_ = cb;
         slot_ = slot;
         completed_ = 0;
@@ -68,11 +67,11 @@ class ParGroup : Runnable, CancellationHandler {
         slot.installIfConnected(this);
 
         // Clear all cancellation signals
-        stdlike::constexprFor<0, Children, 1>([&](auto ic) { children_[ic].sig.clear(); });
+        supp::constexprFor<0, Children, 1>([&](auto ic) { children_[ic].sig.clear(); });
 
         // Connect first |Init...| signals to child tasks and initiate them
-        stdlike::constexprFor<0, sizeof...(Init), 1>([&](auto ic) {
-            Initiator auto&& init = stdlike::get<ic()>(inits);
+        supp::constexprFor<0, sizeof...(Init), 1>([&](auto ic) {
+            Initiator auto&& init = std::get<ic()>(inits);
 
             // Initiator cannot call the final callback directly
             auto* child = &children_[ic];
@@ -141,7 +140,7 @@ class ParGroup : Runnable, CancellationHandler {
     supp::IntrusiveForwardList<Runnable> queue_;
 
     // Children
-    stdlike::array<Child, Children> children_;
+    std::array<Child, Children> children_;
 
     CancellationSlot slot_;
     Runnable* cb_ = noop;

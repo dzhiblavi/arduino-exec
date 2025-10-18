@@ -9,7 +9,7 @@ namespace exec {
 template <typename T>
 [[nodiscard]] Initiator auto detach(T t) {
     struct Runner : Runnable {
-        Runner(T t) : task_{task(stdlike::move(t))} {}  // NOLINT
+        Runner(T t) : task_{task(std::move(t))} {}  // NOLINT
 
         Initiator auto start() {
             return [this](Runnable* cb, CancellationSlot slot = {}) mutable {
@@ -29,13 +29,13 @@ template <typename T>
         Runnable* cb_;
     };
 
-    auto* runner = new Runner(stdlike::move(t));
+    auto* runner = new Runner(std::move(t));
     return runner->start();
 }
 
 template <typename T>
 void spawn(T task) {
-    auto initiator = detach(stdlike::move(task));
+    auto initiator = detach(std::move(task));
     executor()->post(initiator(noop));
 }
 

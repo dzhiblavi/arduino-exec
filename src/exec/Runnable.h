@@ -1,7 +1,8 @@
 #pragma once
 
-#include <stdlike/type_traits.h>
 #include <supp/IntrusiveForwardList.h>
+
+#include <type_traits>
 
 namespace exec {
 
@@ -27,10 +28,10 @@ namespace detail {
 template <typename F>
 struct [[nodiscard]] RunnableWrapper : Runnable {
  public:
-    RunnableWrapper(F&& closure) : closure_{stdlike::forward<F>(closure)} {}  // NOLINT
+    RunnableWrapper(F&& closure) : closure_{std::forward<F>(closure)} {}  // NOLINT
 
     [[nodiscard]] Runnable* run() final {
-        if constexpr (stdlike::same_as<decltype(closure_(this)), void>) {
+        if constexpr (std::same_as<decltype(closure_(this)), void>) {
             closure_(this);
             return noop;
         } else {
@@ -39,7 +40,7 @@ struct [[nodiscard]] RunnableWrapper : Runnable {
     }
 
  private:
-    stdlike::remove_reference_t<F> closure_;
+    std::remove_reference_t<F> closure_;
 };
 
 }  // namespace detail
@@ -49,7 +50,7 @@ using RunnableOf = detail::RunnableWrapper<F>;
 
 template <typename F>
 auto runnable(F&& closure) {  // NOLINT
-    return detail::RunnableWrapper(stdlike::forward<F>(closure));
+    return detail::RunnableWrapper(std::forward<F>(closure));
 }
 
 }  // namespace exec

@@ -3,7 +3,7 @@
 #include "exec/Error.h"
 #include "exec/cancel.h"
 
-#include <stdlike/type_traits.h>
+#include <type_traits>
 
 namespace exec {
 
@@ -22,7 +22,7 @@ class Operation {
         DASSERT(outstanding());
         detachCancellation();
         *ec_ = code;
-        return stdlike::exchange(cb_, nullptr);
+        return std::exchange(cb_, nullptr);
     }
 
     void detachCancellation() {
@@ -54,7 +54,7 @@ class CancellableOperation : public Operation, CancellationHandler {
 
  private:
     void executeCancelHook() {
-        if constexpr (!stdlike::same_as<Self, void>) {
+        if constexpr (!std::same_as<Self, void>) {
             static_cast<Self*>(this)->cancelHook();
         }
     }
