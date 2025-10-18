@@ -2,7 +2,7 @@
 
 #include "exec/Runnable.h"
 #include "exec/executor/Executor.h"
-#include "exec/os/Service.h"
+#include "exec/os/OS.h"
 
 #include <supp/PriorityQueue.h>
 
@@ -16,10 +16,19 @@ class DeferService {
     virtual void defer(Runnable* r, ttime::Time at) = 0;
 };
 
+DeferService* deferService();
+void setDeferService(DeferService* s);
+
 template <int MaxDefers>
-class DeferServiceImpl : public DeferService, public Service {
+class HeapDeferService : public DeferService, public Service {
  public:
-    DeferServiceImpl() = default;
+    HeapDeferService() {
+        if (auto o = os()) {
+            o->addService(this);
+        }
+
+        setDeferService(this);
+    }
 
     void defer(Runnable* r, ttime::Time at) override {
         defer_.push(Defer{at, r});
@@ -42,8 +51,5 @@ class DeferServiceImpl : public DeferService, public Service {
     using Comp = decltype([](auto& l, auto& r) { return l.at < r.at; });
     supp::PriorityQueue<Defer, MaxDefers, Comp> defer_;
 };
-
-DeferService* deferService();
-void setDeferService(DeferService* s);
 
 }  // namespace exec

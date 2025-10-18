@@ -13,6 +13,7 @@ TimerService* timerService() {
 }
 
 void setTimerService(TimerService* s) {
+    DASSERT(service == nullptr, "TimerService already set");
     service = s;
 }
 

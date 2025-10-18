@@ -4,11 +4,15 @@
 
 namespace exec {
 
+class OS;
+
+OS* os();
+void setOS(OS* os);
+
 class OS : public Service {
  public:
-    template <typename... S>
-    explicit OS(S*... services) {
-        (addService(services), ...);
+    OS() {
+        setOS(this);
     }
 
     void tick() override {

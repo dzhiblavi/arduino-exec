@@ -13,6 +13,7 @@ DeferService* deferService() {
 }
 
 void setDeferService(DeferService* s) {
+    DASSERT(service == nullptr, "DeferService already set");
     service = s;
 }
 

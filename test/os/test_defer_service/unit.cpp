@@ -19,14 +19,14 @@ namespace exec {
 auto noopRunnable = runnable([](auto) {});
 
 TEST(test_tick_empty) {
-    DeferServiceImpl<2> ds;
+    HeapDeferService<2> ds;
 
     ds.tick();
     TEST_ASSERT_EQUAL(0, ex.queued.size());
 }
 
 TEST(test_defer_not_ready) {
-    DeferServiceImpl<2> ds;
+    HeapDeferService<2> ds;
 
     ds.defer(&noopRunnable, ttime::Time(10));
     ttime::mono::advance(ttime::Duration(5));
@@ -36,7 +36,7 @@ TEST(test_defer_not_ready) {
 }
 
 TEST(test_defer_ready) {
-    DeferServiceImpl<2> ds;
+    HeapDeferService<2> ds;
 
     ds.defer(&noopRunnable, ttime::Time(10));
     ttime::mono::advance(ttime::Duration(15));

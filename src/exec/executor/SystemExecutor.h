@@ -1,7 +1,7 @@
 #pragma once
 
 #include "exec/executor/Executor.h"
-#include "exec/os/Service.h"
+#include "exec/os/OS.h"
 
 #include <supp/IntrusiveForwardList.h>
 
@@ -9,6 +9,14 @@ namespace exec {
 
 class SystemExecutor : public Executor, public Service {
  public:
+    SystemExecutor() {
+        if (auto o = os()) {
+            o->addService(this);
+        }
+
+        setExecutor(this);
+    }
+
     void post(Runnable* r) override {
         queue_.pushBack(r);
     }

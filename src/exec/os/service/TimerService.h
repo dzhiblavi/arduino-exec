@@ -2,7 +2,7 @@
 
 #include "exec/Runnable.h"
 #include "exec/executor/Executor.h"
-#include "exec/os/Service.h"
+#include "exec/os/OS.h"
 
 #include <supp/IntrusivePriorityQueue.h>
 
@@ -23,10 +23,19 @@ class TimerService {
     virtual bool remove(TimerEntry* t) = 0;
 };
 
+TimerService* timerService();
+void setTimerService(TimerService* s);
+
 template <int MaxTimers>
-class TimerServiceImpl : public TimerService, public Service {
+class HeapTimerService : public TimerService, public Service {
  public:
-    TimerServiceImpl() = default;
+    HeapTimerService() {
+        if (auto o = os()) {
+            o->addService(this);
+        }
+
+        setTimerService(this);
+    }
 
     void add(TimerEntry* t) override {
         DASSERT(!t->connected());
@@ -49,8 +58,5 @@ class TimerServiceImpl : public TimerService, public Service {
     using Comp = decltype([](auto& l, auto& r) { return l.at < r.at; });
     supp::IntrusivePriorityQueue<TimerEntry, MaxTimers, Comp> timers_;
 };
-
-TimerService* timerService();
-void setTimerService(TimerService* s);
 
 }  // namespace exec

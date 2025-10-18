@@ -19,7 +19,7 @@ namespace exec {
 auto noopRunnable = runnable([](auto) {});
 
 TEST(test_timer_not_ready) {
-    TimerServiceImpl<2> s;
+    HeapTimerService<2> s;
     TimerEntry t;
     t.at = ttime::Time(10);
     t.task = &noopRunnable;
@@ -32,7 +32,7 @@ TEST(test_timer_not_ready) {
 }
 
 TEST(test_timer_ready) {
-    TimerServiceImpl<2> s;
+    HeapTimerService<2> s;
     TimerEntry t;
     t.at = ttime::Time(10);
     t.task = &noopRunnable;
@@ -45,7 +45,7 @@ TEST(test_timer_ready) {
 }
 
 TEST(test_timer_cancel_ok) {
-    TimerServiceImpl<2> s;
+    HeapTimerService<2> s;
     TimerEntry t;
     t.at = ttime::Time(10);
     t.task = &noopRunnable;
@@ -61,7 +61,7 @@ TEST(test_timer_cancel_ok) {
 }
 
 TEST(test_timer_cancel_gone) {
-    TimerServiceImpl<2> s;
+    HeapTimerService<2> s;
     TimerEntry t;
     t.at = ttime::Time(10);
     t.task = &noopRunnable;
