@@ -1,6 +1,6 @@
 #pragma once
 
-#include "exec/os//TimerService.h"
+#include "exec/os/TimerService.h"
 #include <unity.h>
 
 namespace test {

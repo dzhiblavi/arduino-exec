@@ -9,10 +9,9 @@
 #include <supp/IntrusiveList.h>
 #include <supp/Pinned.h>
 
-#include <array>
-#include <utility>
-
 #include <log.h>
+
+#include <utility>
 
 namespace exec {
 

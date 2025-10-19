@@ -3,8 +3,6 @@
 #include "exec/Error.h"
 #include "exec/cancel.h"
 
-#include <type_traits>
-
 namespace exec {
 
 class Operation {

@@ -3,7 +3,6 @@
 #if defined(EXEC_NATIVE)
 
 // EXEC_NATIVE
-
 #define EXEC_RAM
 
 #elif defined(ARDUINO_AVR_NANO)

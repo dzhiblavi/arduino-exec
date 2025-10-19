@@ -10,9 +10,8 @@
 #include <supp/verify.h>
 
 #include <array>
+#include <cstdint>
 #include <tuple>
-
-#include <stdint.h>
 
 namespace exec::detail {
 

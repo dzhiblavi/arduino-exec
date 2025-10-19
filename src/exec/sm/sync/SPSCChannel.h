@@ -8,9 +8,9 @@
 #include <supp/CircularBuffer.h>
 #include <supp/Pinned.h>
 
-#include <utility>
-
 #include <log.h>
+
+#include <utility>
 
 namespace exec {
 

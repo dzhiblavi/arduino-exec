@@ -3,8 +3,6 @@
 #include "exec/Runnable.h"
 #include "exec/cancel.h"
 
-#include <utility>
-
 namespace exec {
 
 // Initiator should never call the callback directly

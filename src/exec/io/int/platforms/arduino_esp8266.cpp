@@ -1,6 +1,6 @@
-#include "exec/sys/config.h" // IWYU pragma: keep
+#include "exec/io/int/config.h" // IWYU pragma: keep
 
-#if defined(EXEC_ARDUINO_ESP8266)
+#if defined(EXEC_INT_ARDUINO_ESP8266)
 
 #include "exec/io/int/interrupts.h"
 

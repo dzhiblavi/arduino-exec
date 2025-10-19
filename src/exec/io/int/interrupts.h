@@ -1,8 +1,8 @@
 #pragma once
 
-#include "exec/sys/config.h"  // IWYU pragma: keep
+#include "exec/io/int/config.h"  // IWYU pragma: keep
 
-#include <stdint.h>
+#include <cstdint>
 
 namespace exec {
 
@@ -19,7 +19,7 @@ void attachInterrupt(uint8_t int_no, InterruptFunc func, InterruptMode mode);
 void attachInterruptArg(uint8_t int_no, InterruptArgFunc func, void* arg, InterruptMode mode);
 void detachInterrupt(uint8_t int_no);
 
-#if defined(EXEC_NATIVE)
+#if defined(EXEC_INT_MANUAL)
 void raiseInterrupt(uint8_t int_no, InterruptMode mode);
 #endif
 

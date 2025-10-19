@@ -1,10 +1,10 @@
 #pragma once
 
-#include "exec/io/encoder/sm/AsyncEncoder.h"
+#include "exec/io/encoder/sm/AsyncEncoder.h"  // IWYU pragma: keep
 
 #ifdef EXEC_ARDUINO
 
-#include "exec/os//Service.h"
+#include "exec/os/Service.h"
 
 namespace exec {
 

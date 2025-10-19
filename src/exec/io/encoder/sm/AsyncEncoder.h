@@ -1,6 +1,6 @@
 #pragma once
 
-#include "exec/io/encoder/Encoder.h"
+#include "exec/io/encoder/Encoder.h"  // IWYU pragma: keep
 
 #ifdef EXEC_ARDUINO
 

@@ -1,6 +1,6 @@
-#include "exec/sys/config.h"  // IWYU pragma: keep
+#include "exec/io/int/config.h"  // IWYU pragma: keep
 
-#if defined(EXEC_NATIVE)
+#if defined(EXEC_INT_MANUAL)
 
 #include "exec/io/int/interrupts.h"
 
