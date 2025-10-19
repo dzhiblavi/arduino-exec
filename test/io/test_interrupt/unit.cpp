@@ -1,7 +1,7 @@
 #include "Executor.h"
 
-#include <exec/io/sm/Interrupt.h>
-#include <exec/sys/int/interrupts.h>
+#include <exec/io/int/interrupts.h>
+#include <exec/io/int/sm/Interrupt.h>
 
 #include <utest/utest.h>
 

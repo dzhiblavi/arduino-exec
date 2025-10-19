@@ -1,39 +1,23 @@
 #pragma once
 
-#include "exec/Error.h"
-#include "exec/executor/Executor.h"
+#include "exec/io/stream/Stream.h"
+
 #include "exec/sm/Initiator.h"
 #include "exec/sm/Operation.h"
 
+#include "exec/Error.h"
+#include "exec/executor/Executor.h"
+
 #include <log.h>
-
-#if !__has_include(<Stream.h>)
-
-class Stream {
- public:
-    virtual ~Stream() = default;
-    virtual int available() = 0;
-    virtual int read() = 0;
-    virtual int peek() = 0;
-    virtual size_t write(uint8_t) = 0;
-};
-
-#else
-
-#include <Stream.h>
-
-#endif
 
 namespace exec {
 
-using Source = ::Stream;
-
-class Stream : Runnable {
+class AsyncStream : Runnable {
  public:
-    explicit Stream(Source* stream) : stream_{stream} {}
+    explicit AsyncStream(Stream* stream) : stream_{stream} {}
 
     // NOTE: Equivalent to the default constructor.
-    Stream(Stream&& rhs) noexcept : Stream(rhs.stream_) {}
+    AsyncStream(AsyncStream&& rhs) noexcept : AsyncStream(rhs.stream_) {}
 
     Initiator auto read(char* dst, int* count, ErrCode* err) {
         return [this, dst, count, err](Runnable* cb, CancellationSlot slot = {}) {
@@ -86,7 +70,7 @@ class Stream : Runnable {
         return *left_ == 0;
     }
 
-    Source* const stream_;
+    Stream* const stream_;
     char* dst_ = nullptr;
     int* left_ = 0;
     CancellableOperation<> op_;

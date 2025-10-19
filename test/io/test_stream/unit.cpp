@@ -1,7 +1,7 @@
 #include "Executor.h"
 
 #include <exec/executor/Executor.h>
-#include <exec/io/sm/Stream.h>
+#include <exec/io/stream/sm/AsyncStream.h>
 
 #include <supp/CircularBuffer.h>
 
@@ -63,7 +63,7 @@ struct t_stream {
     ErrCode ec = ErrCode::Unknown;
     TestStream stream;
     Task t;
-    Stream s{&stream};
+    AsyncStream s{&stream};
     test::Executor executor;
 };
 

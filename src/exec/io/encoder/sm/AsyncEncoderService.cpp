@@ -1,4 +1,4 @@
-#include "exec/io/EncoderService.h"
+#include "exec/io/encoder/sm/AsyncEncoderService.h"
 
 #ifdef EXEC_ARDUINO
 
@@ -6,14 +6,14 @@
 
 namespace exec {
 
-EncoderService::EncoderService() {
+AsyncEncoderService::AsyncEncoderService() {
     if (auto o = os()) {
         o->addService(this);
     }
 }
 
-void EncoderService::tick() {
-    Encoder::tick();
+void AsyncEncoderService::tick() {
+    AsyncEncoder::tick();
 }
 
 }  // namespace exec

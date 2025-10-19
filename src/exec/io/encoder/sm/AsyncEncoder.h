@@ -1,6 +1,6 @@
 #pragma once
 
-#include "exec/io/Encoder.h"
+#include "exec/io/encoder/Encoder.h"
 
 #ifdef EXEC_ARDUINO
 

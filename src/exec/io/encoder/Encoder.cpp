@@ -1,8 +1,8 @@
-#include "exec/io/Encoder.h"
+#include "exec/io/encoder/Encoder.h"
 
 #ifdef EXEC_ARDUINO
 
-#include "exec/sys/int/interrupts.h"
+#include "exec/io/int/interrupts.h"
 
 namespace exec {
 

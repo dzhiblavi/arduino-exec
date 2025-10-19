@@ -2,7 +2,7 @@
 
 #if defined(EXEC_NATIVE)
 
-#include "exec/sys/int/interrupts.h"
+#include "exec/io/int/interrupts.h"
 
 #include <supp/verify.h>
 
