@@ -4,27 +4,17 @@
 
 namespace exec {
 
-class OS;
-
-OS* os();
-void setOS(OS* os);
-
 class OS : public Service {
  public:
-    OS() {
-        setOS(this);
-    }
-
-    void tick() override {
-        services_.iterate([](Service& s) { s.tick(); });
-    }
-
-    void addService(Service* s) {
-        services_.pushBack(s);
-    }
+    OS();
+    void tick() override;
+    void addService(Service* s);
 
  private:
     supp::IntrusiveForwardList<Service> services_;
 };
+
+OS* os();
+void setOS(OS* os);
 
 }  // namespace exec

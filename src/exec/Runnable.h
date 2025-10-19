@@ -6,7 +6,7 @@
 
 namespace exec {
 
-class [[nodiscard]] Runnable : public supp::IntrusiveForwardListNode {
+class [[nodiscard]] Runnable : public supp::IntrusiveForwardListNode<> {
  public:
     virtual ~Runnable() = default;
 
