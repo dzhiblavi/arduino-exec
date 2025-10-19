@@ -2,7 +2,7 @@
 
 #include "exec/Error.h"
 #include "exec/executor/Executor.h"
-#include "exec/os/Service.h"
+#include "exec/os/OS.h"
 #include "exec/sm/Initiator.h"
 #include "exec/sm/Operation.h"
 #include "exec/sys/int/interrupts.h"
@@ -12,7 +12,12 @@ namespace exec {
 template <uint8_t IntNo, InterruptMode Mode>
 class Interrupt : public Service {
  public:
-    Interrupt() = default;
+    Interrupt() {
+        if (auto o = os()) {
+            o->addService(this);
+        }
+    }
+
     Interrupt(const Interrupt&) = delete;
     Interrupt& operator=(const Interrupt&) = delete;
 

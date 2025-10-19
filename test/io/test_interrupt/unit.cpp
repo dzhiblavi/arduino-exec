@@ -1,6 +1,6 @@
 #include "Executor.h"
 
-#include <exec/sm/io/Interrupt.h>
+#include <exec/io/sm/Interrupt.h>
 #include <exec/sys/int/interrupts.h>
 
 #include <utest/utest.h>

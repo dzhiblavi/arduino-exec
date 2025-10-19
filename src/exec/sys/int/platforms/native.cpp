@@ -1,6 +1,6 @@
 #include "exec/sys/config.h"  // IWYU pragma: keep
 
-#if defined(EXEC_SYSTEM_NATIVE)
+#if defined(EXEC_NATIVE)
 
 #include "exec/sys/int/interrupts.h"
 
