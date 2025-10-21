@@ -75,6 +75,23 @@ TEST_F(t_interrupt, test_cancelled) {
     TEST_ASSERT_EQUAL(0, cnt);
 }
 
+TEST_F(t_interrupt, test_wake_at) {
+    SECTION("no pending operations") {
+        TEST_ASSERT_EQUAL(ttime::Time::max().micros(), i.wakeAt().micros());
+    }
+
+    SECTION("pending, not fired") {
+        i.wait (&ec)(&t);
+        TEST_ASSERT_EQUAL(ttime::Time::max().micros(), i.wakeAt().micros());
+    }
+
+    SECTION("pending, fired") {
+        i.wait (&ec)(&t);
+        raiseInterrupt(1, InterruptMode::Change);
+        TEST_ASSERT_EQUAL(ttime::mono::now().micros(), i.wakeAt().micros());
+    }
+}
+
 int called = 0;
 
 TEST_F(t_interrupt, test_calls_isr) {

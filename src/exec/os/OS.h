@@ -7,8 +7,12 @@ namespace exec {
 class OS : public Service {
  public:
     OS();
-    void tick() override;
+
     void addService(Service* s);
+
+    // Service
+    void tick() override;
+    ttime::Time wakeAt() const override;
 
  private:
     supp::IntrusiveForwardList<Service> services_;

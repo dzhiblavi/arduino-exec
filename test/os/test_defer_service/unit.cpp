@@ -44,6 +44,22 @@ TEST(test_defer_ready) {
     TEST_ASSERT_EQUAL(1, cnt);
 }
 
+TEST(test_wake_at) {
+    HeapDeferService<2> ds;
+
+    SECTION("no defers") {
+        TEST_ASSERT_EQUAL(ttime::Time::max().micros(), ds.wakeAt().micros());
+    }
+
+    SECTION("with defers") {
+        int cnt = 0;
+        auto task = makeTask(cnt);
+
+        ds.defer(&task, ttime::Time(10));
+        TEST_ASSERT_EQUAL(ttime::Time(10).micros(), ds.wakeAt().micros());
+    }
+}
+
 }  // namespace exec
 
 TESTS_MAIN

@@ -8,6 +8,8 @@
 #include "exec/Error.h"
 #include "exec/os/OS.h"
 
+#include <time/mono.h>
+
 namespace exec {
 
 template <uint8_t IntNo, InterruptMode Mode>
@@ -62,6 +64,14 @@ class Interrupt : public Service {
         if (op_.outstanding()) {
             op_.complete(ErrCode::Success)->runAll();
         }
+    }
+
+    ttime::Time wakeAt() const override {
+        if (fired_ && op_.outstanding()) {
+            return ttime::mono::now();
+        }
+
+        return ttime::Time::max();
     }
 
  private:

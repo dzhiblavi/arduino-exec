@@ -33,12 +33,21 @@ class HeapDeferService : public DeferService, public Service {
         heap_.push(Defer{at, r});
     }
 
+    // Service
     void tick() override {
         auto now = ttime::mono::now();
 
         while (!heap_.empty() && now >= heap_.front().at) {
             heap_.pop().task->runAll();
         }
+    }
+
+    ttime::Time wakeAt() const override {
+        if (heap_.empty()) {
+            return ttime::Time::max();
+        }
+
+        return heap_.front().at;
     }
 
  private:

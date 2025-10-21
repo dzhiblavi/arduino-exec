@@ -66,6 +66,20 @@ TEST(test_run_order_push_during_tick) {
     TEST_ASSERT_EQUAL(6, counter);
 }
 
+TEST(test_wake_at) {
+    SystemExecutor exec;
+
+    SECTION("empty queue") {
+        TEST_ASSERT_EQUAL(ttime::Time::max().micros(), exec.wakeAt().micros());
+    }
+
+    SECTION("non-empty queue") {
+        auto task = runnable([](auto) { return noop; });
+        exec.post(&task);
+        TEST_ASSERT_EQUAL(ttime::mono::now().micros(), exec.wakeAt().micros());
+    }
+}
+
 }  // namespace exec
 
 TESTS_MAIN

@@ -53,6 +53,14 @@ class HeapTimerService : public TimerService, public Service {
         }
     }
 
+    ttime::Time wakeAt() const override {
+        if (heap_.empty()) {
+            return ttime::Time::max();
+        }
+
+        return heap_.front()->at;
+    }
+
  private:
     using Comp = decltype([](auto& l, auto& r) { return l.at < r.at; });
     supp::IntrusivePriorityQueue<TimerEntry, MaxTimers, Comp> heap_;

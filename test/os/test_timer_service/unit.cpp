@@ -82,6 +82,25 @@ TEST(test_timer_cancel_gone) {
     TEST_ASSERT_EQUAL(1, cnt);
 }
 
+TEST(test_wake_at) {
+    HeapTimerService<2> s;
+
+    SECTION("no defers") {
+        TEST_ASSERT_EQUAL(ttime::Time::max().micros(), s.wakeAt().micros());
+    }
+
+    SECTION("with defers") {
+        int cnt = 0;
+        auto task = makeTask(cnt);
+        TimerEntry t;
+        t.at = ttime::Time(10);
+        t.task = &task;
+
+        s.add(&t);
+        TEST_ASSERT_EQUAL(ttime::Time(10).micros(), s.wakeAt().micros());
+    }
+}
+
 }  // namespace exec
 
 TESTS_MAIN
