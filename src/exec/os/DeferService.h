@@ -1,7 +1,6 @@
 #pragma once
 
 #include "exec/Runnable.h"
-#include "exec/executor/Executor.h"
 #include "exec/os/OS.h"
 
 #include <supp/PriorityQueue.h>
@@ -38,7 +37,7 @@ class HeapDeferService : public DeferService, public Service {
         auto now = ttime::mono::now();
 
         while (!heap_.empty() && now >= heap_.front().at) {
-            executor()->post(heap_.pop().task);
+            heap_.pop().task->runAll();
         }
     }
 

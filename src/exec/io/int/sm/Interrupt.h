@@ -6,7 +6,6 @@
 #include "exec/sm/Operation.h"
 
 #include "exec/Error.h"
-#include "exec/executor/Executor.h"
 #include "exec/os/OS.h"
 
 namespace exec {
@@ -61,7 +60,7 @@ class Interrupt : public Service {
         fired_ = false;
 
         if (op_.outstanding()) {
-            executor()->post(op_.complete(ErrCode::Success));
+            op_.complete(ErrCode::Success)->runAll();
         }
     }
 

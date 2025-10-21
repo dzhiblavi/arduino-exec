@@ -1,5 +1,3 @@
-#include "Executor.h"
-
 #include <exec/io/int/interrupts.h>
 #include <exec/io/int/sm/Interrupt.h>
 
@@ -9,35 +7,37 @@ namespace exec {
 
 struct t_interrupt {
     struct Task : Runnable {
-        Task() = default;
+        Task(int& c) : cnt(c) {}
 
         Runnable* run() override {
+            ++cnt;
             return noop;
         }
+
+        int& cnt;
     };
 
     t_interrupt() {
-        exec::setExecutor(&executor);
         i.begin();
     }
 
+    int cnt = 0;
+    Task t{cnt};
     ErrCode ec = ErrCode::Unknown;
-    Task t;
-    test::Executor executor;
     exec::Interrupt<1, exec::InterruptMode::Change> i;
 };
 
 TEST_F(t_interrupt, test_blocks_no_interrupt) {
     TEST_ASSERT_EQUAL(noop, i.wait(&ec)(&t));
     i.tick();
-    TEST_ASSERT_TRUE(executor.queued.empty());
+    TEST_ASSERT_EQUAL(0, cnt);
     TEST_ASSERT_EQUAL(ErrCode::Unknown, ec);
 }
 
 TEST_F(t_interrupt, test_does_not_block_after_interrupt) {
     raiseInterrupt(1, InterruptMode::Change);
     TEST_ASSERT_EQUAL(&t, i.wait(&ec)(&t));
-    TEST_ASSERT_TRUE(executor.queued.empty());
+    TEST_ASSERT_EQUAL(0, cnt);
     TEST_ASSERT_EQUAL(ErrCode::Success, ec);
 }
 
@@ -45,7 +45,7 @@ TEST_F(t_interrupt, test_end_ignores_interrupts) {
     i.end();
     raiseInterrupt(1, InterruptMode::Change);
     TEST_ASSERT_EQUAL(noop, i.wait(&ec)(&t));
-    TEST_ASSERT_TRUE(executor.queued.empty());
+    TEST_ASSERT_EQUAL(0, cnt);
     TEST_ASSERT_EQUAL(ErrCode::Unknown, ec);
 }
 
@@ -54,8 +54,7 @@ TEST_F(t_interrupt, test_unblocks_on_interrupt) {
     raiseInterrupt(1, InterruptMode::Change);
 
     i.tick();
-    TEST_ASSERT_EQUAL(1, executor.queued.size());
-    TEST_ASSERT_EQUAL(&t, executor.queued.front());
+    TEST_ASSERT_EQUAL(1, cnt);
     TEST_ASSERT_EQUAL(ErrCode::Success, ec);
 }
 
@@ -73,13 +72,12 @@ TEST_F(t_interrupt, test_cancelled) {
     TEST_ASSERT_EQUAL(ErrCode::Cancelled, ec);
 
     i.tick();
-    TEST_ASSERT_TRUE(executor.queued.empty());
+    TEST_ASSERT_EQUAL(0, cnt);
 }
 
 int called = 0;
 
 TEST_F(t_interrupt, test_calls_isr) {
-    called = 0;
     i.setISR([] { ++called; });
     raiseInterrupt(1, InterruptMode::Change);
     raiseInterrupt(0, InterruptMode::Change);
