@@ -15,9 +15,6 @@ class DeferService {
     virtual void defer(Runnable* r, ttime::Time at) = 0;
 };
 
-DeferService* deferService();
-void setDeferService(DeferService* s);
-
 template <int MaxDefers>
 class HeapDeferService : public DeferService, public Service {
  public:
@@ -26,7 +23,7 @@ class HeapDeferService : public DeferService, public Service {
             o->addService(this);
         }
 
-        setDeferService(this);
+        setService<DeferService>(this);
     }
 
     void defer(Runnable* r, ttime::Time at) override {

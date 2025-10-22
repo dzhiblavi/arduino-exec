@@ -22,9 +22,6 @@ class TimerService {
     virtual bool remove(TimerEntry* t) = 0;
 };
 
-TimerService* timerService();
-void setTimerService(TimerService* s);
-
 template <int MaxTimers>
 class HeapTimerService : public TimerService, public Service {
  public:
@@ -33,7 +30,7 @@ class HeapTimerService : public TimerService, public Service {
             o->addService(this);
         }
 
-        setTimerService(this);
+        setService<TimerService>(this);
     }
 
     void add(TimerEntry* t) override {

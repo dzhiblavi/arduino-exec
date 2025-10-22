@@ -7,7 +7,7 @@
 test::TimerService svc;
 
 void globalSetUp() {
-    exec::setTimerService(&svc);
+    exec::setService<exec::TimerService>(&svc);
 }
 
 void setUp() {

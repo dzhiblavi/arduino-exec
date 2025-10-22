@@ -31,7 +31,7 @@ class Timer : public Runnable, private CancellationHandler {
         op_.initiate(ec, cb, slot, this);
         entry_.at = ttime::mono::now() + dur;
         entry_.task = this;
-        timerService()->add(&entry_);
+        service<TimerService>()->add(&entry_);
     }
 
     // Runnable, called by the OS when timer goes off
@@ -43,7 +43,7 @@ class Timer : public Runnable, private CancellationHandler {
     Runnable* cancel() override {
         op_.detachCancellation();
 
-        if (!timerService()->remove(&entry_)) {
+        if (!service<TimerService>()->remove(&entry_)) {
             // Timer has already went off or has been cancelled, nothing to do here
             return noop;
         }
