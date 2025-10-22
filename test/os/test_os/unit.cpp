@@ -1,4 +1,5 @@
-#include <exec/os/TimerService.h>
+#include <exec/Runnable.h>
+#include <exec/os/OS.h>
 
 #include <time/config.h>
 #include <utest/utest.h>

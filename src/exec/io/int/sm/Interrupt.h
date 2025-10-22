@@ -16,8 +16,8 @@ template <uint8_t IntNo, InterruptMode Mode>
 class Interrupt : public Service {
  public:
     Interrupt() {
-        if (auto o = os()) {
-            o->addService(this);
+        if (auto os = service<OS>()) {
+            os->addService(this);
         }
     }
 

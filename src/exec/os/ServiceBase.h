@@ -9,8 +9,8 @@ template <typename Interface, typename Implementation>
 class ServiceBase : public Service {
  public:
     ServiceBase() {
-        if (auto o = os()) {
-            o->addService(this);
+        if (auto os = service<OS>()) {
+            os->addService(this);
         }
 
         setService<Interface>(static_cast<Implementation*>(this));

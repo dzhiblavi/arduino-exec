@@ -7,7 +7,6 @@ namespace exec {
 class OS : public Service {
  public:
     OS();
-
     void addService(Service* s);
 
     // Service
@@ -17,8 +16,5 @@ class OS : public Service {
  private:
     supp::IntrusiveForwardList<Service> services_;
 };
-
-OS* os();
-void setOS(OS* os);
 
 }  // namespace exec

@@ -7,8 +7,8 @@
 namespace exec {
 
 AsyncEncoderService::AsyncEncoderService() {
-    if (auto o = os()) {
-        o->addService(this);
+    if (auto os = service<OS>()) {
+        os->addService(this);
     }
 }
 
