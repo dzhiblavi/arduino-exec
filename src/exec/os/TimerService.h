@@ -3,13 +3,13 @@
 #include "exec/Runnable.h"
 #include "exec/os/OS.h"
 
-#include <supp/IntrusivePriorityQueue.h>
+#include <supp/RandomAccessPriorityQueue.h>
 
 #include <time/mono.h>
 
 namespace exec {
 
-struct TimerEntry : supp::IntrusivePriorityQueueNode {
+struct TimerEntry : supp::RandomAccessPriorityQueueNode {
     ttime::Time at;
     Runnable* task = nullptr;
 };
@@ -60,7 +60,7 @@ class HeapTimerService : public TimerService, public Service {
 
  private:
     using Comp = decltype([](auto& l, auto& r) { return l.at < r.at; });
-    supp::IntrusivePriorityQueue<TimerEntry, MaxTimers, Comp> heap_;
+    supp::RandomAccessPriorityQueue<TimerEntry, MaxTimers, Comp> heap_;
 };
 
 }  // namespace exec
