@@ -30,6 +30,7 @@ class TaskBase : public Runnable, public supp::Coro {
     }
 
     Runnable* finish() {
+        supp::Coro::reset();
         return std::exchange(continuation_, noop);
     }
 

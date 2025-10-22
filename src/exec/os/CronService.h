@@ -56,7 +56,6 @@ class HeapCronService : public CronService,
 
         while (!heap_.empty() && now >= heap_.front()->at) {
             auto* front = heap_.front();
-
             front->at = now + front->interval;
             front->task->runAll();  // may call remove()
 
