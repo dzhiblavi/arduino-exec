@@ -2,6 +2,8 @@
 
 #if !__has_include(<Stream.h>)
 
+#include <cstdint>
+
 class Stream {
  public:
     virtual ~Stream() = default;
