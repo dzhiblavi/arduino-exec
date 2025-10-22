@@ -1,7 +1,7 @@
 #pragma once
 
 #include "exec/Runnable.h"
-#include "exec/os/OS.h"
+#include "exec/os/ServiceBase.h"
 
 #include <supp/RandomAccessPriorityQueue.h>
 
@@ -23,16 +23,9 @@ class TimerService {
 };
 
 template <int MaxTimers>
-class HeapTimerService : public TimerService, public Service {
+class HeapTimerService : public TimerService,
+                         public ServiceBase<TimerService, HeapTimerService<MaxTimers>> {
  public:
-    HeapTimerService() {
-        if (auto o = os()) {
-            o->addService(this);
-        }
-
-        setService<TimerService>(this);
-    }
-
     void add(TimerEntry* t) override {
         DASSERT(!t->connected());
         heap_.push(t);

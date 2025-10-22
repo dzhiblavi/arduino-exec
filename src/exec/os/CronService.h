@@ -1,7 +1,7 @@
 #pragma once
 
 #include "exec/Runnable.h"
-#include "exec/os/OS.h"
+#include "exec/os/ServiceBase.h"
 
 #include <supp/RandomAccessPriorityQueue.h>
 
@@ -23,6 +23,9 @@ struct CronTask : supp::RandomAccessPriorityQueueNode {
     ttime::Time at = ttime::mono::now();
 };
 
+// Starts tasks as close to their interval as possible.
+// If task's execution time is larger than the interval, the behaviour is undefined.
+// If task moves itself to another CronService, the behaviour is undefined.
 class CronService {
  public:
     virtual ~CronService() = default;
@@ -31,16 +34,9 @@ class CronService {
 };
 
 template <int MaxTasks>
-class HeapCronService : public CronService, public Service {
+class HeapCronService : public CronService,
+                        public ServiceBase<CronService, HeapCronService<MaxTasks>> {
  public:
-    HeapCronService() {
-        if (auto o = os()) {
-            o->addService(this);
-        }
-
-        setService<CronService>(this);
-    }
-
     void add(CronTask* task) override {
         heap_.push(task);
     }

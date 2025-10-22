@@ -1,23 +1,15 @@
 #pragma once
 
 #include "exec/executor/Executor.h"
-#include "exec/os/OS.h"
+#include "exec/os/ServiceBase.h"
 
-#include <time/mono.h>
 #include <supp/IntrusiveForwardList.h>
+#include <time/mono.h>
 
 namespace exec {
 
-class SystemExecutor : public Executor, public Service {
+class SystemExecutor : public Executor, public ServiceBase<Executor, SystemExecutor> {
  public:
-    SystemExecutor() {
-        if (auto o = os()) {
-            o->addService(this);
-        }
-
-        setExecutor(this);
-    }
-
     void post(Runnable* r) override {
         queue_.pushBack(r);
     }

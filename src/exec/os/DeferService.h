@@ -1,7 +1,7 @@
 #pragma once
 
 #include "exec/Runnable.h"
-#include "exec/os/OS.h"
+#include "exec/os/ServiceBase.h"
 
 #include <supp/PriorityQueue.h>
 
@@ -16,16 +16,9 @@ class DeferService {
 };
 
 template <int MaxDefers>
-class HeapDeferService : public DeferService, public Service {
+class HeapDeferService : public DeferService,
+                         public ServiceBase<DeferService, HeapDeferService<MaxDefers>> {
  public:
-    HeapDeferService() {
-        if (auto o = os()) {
-            o->addService(this);
-        }
-
-        setService<DeferService>(this);
-    }
-
     void defer(Runnable* r, ttime::Time at) override {
         heap_.push(Defer{at, r});
     }
