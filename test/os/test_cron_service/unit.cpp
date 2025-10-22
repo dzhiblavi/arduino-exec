@@ -215,7 +215,7 @@ TEST(test_cron_remove_other_in_callback) {
     s.add(&c2);
 
     SECTION("remove front") {
-        r2 = true; // removes c1 after it has executed
+        r2 = true;  // removes c1 after it has executed
         s.tick();
         TEST_ASSERT_FALSE(c1.connected());
         TEST_ASSERT_TRUE(c2.connected());
@@ -234,7 +234,7 @@ TEST(test_cron_remove_other_in_callback) {
     }
 
     SECTION("remove back") {
-        r1 = true; // removes c2 before it has executed
+        r1 = true;  // removes c2 before it has executed
         s.tick();
         TEST_ASSERT_TRUE(c1.connected());
         TEST_ASSERT_FALSE(c2.connected());
@@ -251,6 +251,44 @@ TEST(test_cron_remove_other_in_callback) {
         TEST_ASSERT_EQUAL(2, cnt1);
         TEST_ASSERT_EQUAL(0, cnt2);
     }
+}
+
+TEST(test_cron_remove_then_add_back) {
+    HeapCronService<1> s;
+
+    auto task = [&s](auto& task, int& cnt) {
+        return runnable([&](auto) {
+            ++cnt;
+            s.remove(&task);
+        });
+    };
+
+    int c = 0;
+    auto t = CronTask(ttime::Duration(30));
+    auto r = task(t, c);
+    t.task = &r;
+
+    // task removes itself
+    s.add(&t);
+    s.tick();
+    TEST_ASSERT_FALSE(t.connected());
+    TEST_ASSERT_EQUAL(1, c);
+
+    // it anyways should be scheduled correctly
+    TEST_ASSERT_EQUAL(30, t.at.micros());
+
+    // but should not be executed while removed
+    s.tick();
+    TEST_ASSERT_EQUAL(1, c);
+
+    // should be executed @30 when reinserted
+    s.add(&t);
+    s.tick();
+    TEST_ASSERT_EQUAL(1, c);
+
+    ttime::mono::advance(ttime::Duration(30));
+    s.tick();
+    TEST_ASSERT_EQUAL(2, c);
 }
 
 }  // namespace exec

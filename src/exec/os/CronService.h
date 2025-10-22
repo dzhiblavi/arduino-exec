@@ -24,8 +24,13 @@ struct CronTask : supp::RandomAccessPriorityQueueNode {
 };
 
 // Starts tasks as close to their interval as possible.
-// If task's execution time is larger than the interval, the behaviour is undefined.
-// If task moves itself to another CronService, the behaviour is undefined.
+// If:
+//   - task's execution time is larger than the interval;
+//   - or task moves itself to another CronService,
+// the behaviour is undefined.
+//
+// If task is asynchronous, it should remove itself from cron before async part and
+// return itself back when done.
 class CronService {
  public:
     virtual ~CronService() = default;
@@ -52,13 +57,12 @@ class HeapCronService : public CronService,
         while (!heap_.empty() && now >= heap_.front()->at) {
             auto* front = heap_.front();
 
-            front->task->runAll();  // may call remove()
-            if (!front->connected()) {
-                continue;
-            }
-
             front->at = now + front->interval;
-            heap_.fix(front);
+            front->task->runAll();  // may call remove()
+
+            if (front->connected()) {
+                heap_.fix(front);
+            }
         }
     }
 
