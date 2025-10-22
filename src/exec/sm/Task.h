@@ -79,7 +79,7 @@ namespace detail {
 template <TaskBody F>
 struct TaskWrapper : TaskBase {
  public:
-    TaskWrapper(F&& body) : body_(std::forward<F>(body)) {}  // NOLINT
+    TaskWrapper(F&& body) : body_(std::move(body)) {}
 
     Runnable* run() final {
         return body_(this);
@@ -102,7 +102,7 @@ auto task(Factory factory) {
 }
 
 template <TaskBody Body>
-auto task(Body&& body) {  // NOLINT
+auto task(Body&& body) {
     return detail::TaskWrapper<Body&&>(std::forward<Body>(body));
 }
 

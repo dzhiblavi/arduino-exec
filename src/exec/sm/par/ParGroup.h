@@ -58,7 +58,7 @@ class ParGroup : Runnable, CancellationHandler {
     };
 
     template <typename... Init>
-    Runnable* doWait(Runnable* cb, CancellationSlot slot, std::tuple<Init...> inits) {  // NOLINT
+    Runnable* doWait(Runnable* cb, CancellationSlot slot, std::tuple<Init...> inits) {
         cb_ = cb;
         slot_ = slot;
         completed_ = 0;

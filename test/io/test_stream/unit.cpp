@@ -1,8 +1,8 @@
 #include "Executor.h"
 
-#include <exec/os/Service.h>
 #include <exec/executor/Executor.h>
 #include <exec/io/stream/sm/AsyncStream.h>
+#include <exec/os/Service.h>
 
 #include <supp/CircularBuffer.h>
 
@@ -55,8 +55,8 @@ struct t_stream {
 
     template <size_t N>
     void check(const char (&s)[N]) {
-        for (int i = 0; i < N - 1; ++i) {
-            TEST_ASSERT_EQUAL(s[i], dst[i]);  // NOLINT
+        for (size_t i = 0; i < N - 1; ++i) {
+            TEST_ASSERT_EQUAL(s[i], dst[i]);
         }
     }
 

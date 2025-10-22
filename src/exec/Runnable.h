@@ -28,7 +28,7 @@ namespace detail {
 template <typename F>
 struct [[nodiscard]] RunnableWrapper : Runnable {
  public:
-    RunnableWrapper(F&& closure) : closure_{std::forward<F>(closure)} {}  // NOLINT
+    RunnableWrapper(F&& closure) : closure_{std::move(closure)} {}
 
     [[nodiscard]] Runnable* run() final {
         if constexpr (std::same_as<decltype(closure_(this)), void>) {
@@ -49,7 +49,7 @@ template <typename F>
 using RunnableOf = detail::RunnableWrapper<F>;
 
 template <typename F>
-auto runnable(F&& closure) {  // NOLINT
+auto runnable(F&& closure) {
     return detail::RunnableWrapper(std::forward<F>(closure));
 }
 
