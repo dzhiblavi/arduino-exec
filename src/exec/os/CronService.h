@@ -15,6 +15,9 @@ struct CronTask : supp::RandomAccessPriorityQueueNode {
         , interval{interval}
         , at{at} {}
 
+    CronTask(ttime::Duration interval, ttime::Time at = ttime::mono::now())
+        : CronTask(noop, interval, at) {}
+
     Runnable* task;
     ttime::Duration interval;
     ttime::Time at = ttime::mono::now();
@@ -52,7 +55,12 @@ class HeapCronService : public CronService, public Service {
 
         while (!heap_.empty() && now >= heap_.front()->at) {
             auto* front = heap_.front();
-            front->task->runAll();
+
+            front->task->runAll();  // may call remove()
+            if (!front->connected()) {
+                continue;
+            }
+
             front->at = now + front->interval;
             heap_.fix(front);
         }

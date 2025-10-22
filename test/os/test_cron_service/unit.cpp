@@ -123,6 +123,136 @@ TEST(test_cron_remove) {
     }
 }
 
+TEST(test_cron_remove_self_in_callback) {
+    HeapCronService<3> s;
+
+    int cnt1 = 0, cnt2 = 0;
+    bool r1 = false, r2 = false;
+    auto c1 = CronTask(ttime::Duration(10));
+    auto c2 = CronTask(ttime::Duration(30));
+
+    auto task = [&s](bool& rem, auto& task, int& cnt) {
+        return runnable([&](auto) {
+            ++cnt;
+            if (rem) {
+                s.remove(&task);
+            }
+        });
+    };
+
+    auto t1 = task(r1, c1, cnt1);
+    auto t2 = task(r2, c2, cnt2);
+
+    c1.task = &t1;
+    c2.task = &t2;
+
+    s.add(&c1);
+    s.add(&c2);
+
+    SECTION("remove front") {
+        r1 = true;
+        s.tick();
+        TEST_ASSERT_FALSE(c1.connected());
+        TEST_ASSERT_TRUE(c2.connected());
+        TEST_ASSERT_EQUAL(1, cnt1);
+        TEST_ASSERT_EQUAL(1, cnt2);
+
+        ttime::mono::advance(ttime::Duration(10));
+        s.tick();
+        TEST_ASSERT_EQUAL(1, cnt1);
+        TEST_ASSERT_EQUAL(1, cnt2);
+
+        ttime::mono::advance(ttime::Duration(20));
+        s.tick();
+        TEST_ASSERT_EQUAL(1, cnt1);
+        TEST_ASSERT_EQUAL(2, cnt2);
+    }
+
+    SECTION("remove back") {
+        r2 = true;
+        s.tick();
+        TEST_ASSERT_TRUE(c1.connected());
+        TEST_ASSERT_FALSE(c2.connected());
+        TEST_ASSERT_EQUAL(1, cnt1);
+        TEST_ASSERT_EQUAL(1, cnt2);
+
+        ttime::mono::advance(ttime::Duration(5));
+        s.tick();
+        TEST_ASSERT_EQUAL(1, cnt1);
+        TEST_ASSERT_EQUAL(1, cnt2);
+
+        ttime::mono::advance(ttime::Duration(5));
+        s.tick();
+        TEST_ASSERT_EQUAL(2, cnt1);
+        TEST_ASSERT_EQUAL(1, cnt2);
+    }
+}
+
+TEST(test_cron_remove_other_in_callback) {
+    HeapCronService<3> s;
+
+    int cnt1 = 0, cnt2 = 0;
+    bool r1 = false, r2 = false;
+    auto c1 = CronTask(ttime::Duration(10));
+    auto c2 = CronTask(ttime::Duration(30));
+
+    auto task = [&s](bool& rem, auto& task, int& cnt) {
+        return runnable([&](auto) {
+            ++cnt;
+            if (rem) {
+                s.remove(&task);
+            }
+        });
+    };
+
+    auto t1 = task(r1, c2, cnt1);
+    auto t2 = task(r2, c1, cnt2);
+
+    c1.task = &t1;
+    c2.task = &t2;
+
+    s.add(&c1);
+    s.add(&c2);
+
+    SECTION("remove front") {
+        r2 = true; // removes c1 after it has executed
+        s.tick();
+        TEST_ASSERT_FALSE(c1.connected());
+        TEST_ASSERT_TRUE(c2.connected());
+        TEST_ASSERT_EQUAL(1, cnt1);
+        TEST_ASSERT_EQUAL(1, cnt2);
+
+        ttime::mono::advance(ttime::Duration(10));
+        s.tick();
+        TEST_ASSERT_EQUAL(1, cnt1);
+        TEST_ASSERT_EQUAL(1, cnt2);
+
+        ttime::mono::advance(ttime::Duration(20));
+        s.tick();
+        TEST_ASSERT_EQUAL(1, cnt1);
+        TEST_ASSERT_EQUAL(2, cnt2);
+    }
+
+    SECTION("remove back") {
+        r1 = true; // removes c2 before it has executed
+        s.tick();
+        TEST_ASSERT_TRUE(c1.connected());
+        TEST_ASSERT_FALSE(c2.connected());
+        TEST_ASSERT_EQUAL(1, cnt1);
+        TEST_ASSERT_EQUAL(0, cnt2);
+
+        ttime::mono::advance(ttime::Duration(5));
+        s.tick();
+        TEST_ASSERT_EQUAL(1, cnt1);
+        TEST_ASSERT_EQUAL(0, cnt2);
+
+        ttime::mono::advance(ttime::Duration(5));
+        s.tick();
+        TEST_ASSERT_EQUAL(2, cnt1);
+        TEST_ASSERT_EQUAL(0, cnt2);
+    }
+}
+
 }  // namespace exec
 
 TESTS_MAIN
