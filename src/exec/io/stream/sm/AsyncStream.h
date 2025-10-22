@@ -3,9 +3,11 @@
 #include "exec/executor/Executor.h"
 #include "exec/io/stream/Stream.h"
 
-#include "exec/os/Service.h"
 #include "exec/sm/Initiator.h"
 #include "exec/sm/Operation.h"
+#include "exec/sm/yield.h"
+
+#include "exec/os/Service.h"
 
 #include "exec/Error.h"
 
@@ -38,8 +40,7 @@ class AsyncStream : Runnable {
 
         LTRACE("Stream::read init async dst=%X left=%d", dst_, *left_);
         op_.initiate(ec, cb, slot);
-        service<Executor>()->post(this);
-        return noop;
+        return yield()(this);
     }
 
     // Runnable
@@ -53,8 +54,7 @@ class AsyncStream : Runnable {
             return op_.complete(ErrCode::Success);
         }
 
-        service<Executor>()->post(this);
-        return noop;
+        return yield()(this);
     }
 
     bool performRead() {
