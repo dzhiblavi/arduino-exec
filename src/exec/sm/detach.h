@@ -1,6 +1,7 @@
 #pragma once
 
 #include "exec/executor/Executor.h"
+#include "exec/os/Service.h"
 #include "exec/sm/Initiator.h"
 #include "exec/sm/Task.h"
 
@@ -36,7 +37,7 @@ template <typename T>
 template <typename T>
 void spawn(T task) {
     auto initiator = detach(std::move(task));
-    executor()->post(initiator(noop));
+    service<Executor>()->post(initiator(noop));
 }
 
 }  // namespace exec

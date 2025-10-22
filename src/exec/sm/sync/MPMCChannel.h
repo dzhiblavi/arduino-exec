@@ -2,6 +2,7 @@
 
 #include "exec/Error.h"
 #include "exec/executor/Executor.h"
+#include "exec/os/Service.h"
 #include "exec/sm/Initiator.h"
 #include "exec/sm/Operation.h"
 
@@ -83,7 +84,7 @@ class MPMCChannel : supp::Pinned {
             // Channel is empty and there are parked ops => parked receivers
             auto* receiver = parked_.popFront();
             *receiver->dest_ = std::move(op->value_);
-            executor()->post(receiver->complete(ErrCode::Success));
+            service<Executor>()->post(receiver->complete(ErrCode::Success));
 
             *ec = ErrCode::Success;
             return cb;
@@ -109,7 +110,7 @@ class MPMCChannel : supp::Pinned {
 
             *op->dest_ = buf_.pop();
             *ec = ErrCode::Success;
-            executor()->post(cb);
+            service<Executor>()->post(cb);
 
             auto* sender = parked_.popFront();
             buf_.push(std::move(sender->value_));

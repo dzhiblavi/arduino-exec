@@ -1,12 +1,13 @@
 #pragma once
 
+#include "exec/executor/Executor.h"
 #include "exec/io/stream/Stream.h"
 
+#include "exec/os/Service.h"
 #include "exec/sm/Initiator.h"
 #include "exec/sm/Operation.h"
 
 #include "exec/Error.h"
-#include "exec/executor/Executor.h"
 
 #include <log.h>
 
@@ -37,7 +38,7 @@ class AsyncStream : Runnable {
 
         LTRACE("Stream::read init async dst=%X left=%d", dst_, *left_);
         op_.initiate(ec, cb, slot);
-        executor()->post(this);
+        service<Executor>()->post(this);
         return noop;
     }
 
@@ -52,7 +53,7 @@ class AsyncStream : Runnable {
             return op_.complete(ErrCode::Success);
         }
 
-        executor()->post(this);
+        service<Executor>()->post(this);
         return noop;
     }
 

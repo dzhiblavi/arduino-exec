@@ -2,6 +2,7 @@
 
 #include "exec/Error.h"
 #include "exec/executor/Executor.h"
+#include "exec/os/Service.h"
 #include "exec/sm/Initiator.h"
 #include "exec/sm/Operation.h"
 
@@ -51,7 +52,7 @@ class SPSCChannel : supp::Pinned {
             DASSERT(size() == 0);
 
             *dst_ = std::move(value);  // NOLINT
-            executor()->post(parked_.complete(ErrCode::Success));
+            service<Executor>()->post(parked_.complete(ErrCode::Success));
 
             *ec = ErrCode::Success;
             return cb;
@@ -77,7 +78,7 @@ class SPSCChannel : supp::Pinned {
 
             *dest = buf_.pop();
             *ec = ErrCode::Success;
-            executor()->post(cb);
+            service<Executor>()->post(cb);
 
             buf_.push(std::move(item_));  // NOLINT
             return parked_.complete(ErrCode::Success);

@@ -1,5 +1,6 @@
 #include "Executor.h"
 
+#include <exec/os/Service.h>
 #include <exec/executor/Executor.h>
 #include <exec/sm/sync/Semaphore.h>
 
@@ -17,7 +18,7 @@ struct t_semaphore {
     };
 
     t_semaphore() {
-        exec::setExecutor(&executor);
+        exec::setService<exec::Executor>(&executor);
     }
 
     Task t1;

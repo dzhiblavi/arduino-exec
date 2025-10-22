@@ -2,6 +2,7 @@
 
 #include "exec/Error.h"
 #include "exec/executor/Executor.h"
+#include "exec/os/Service.h"
 #include "exec/sm/Initiator.h"
 #include "exec/sm/Operation.h"
 
@@ -82,7 +83,7 @@ class MPSCChannel : supp::Pinned {
             DASSERT(size() == 0 || Capacity == 0);
 
             *receiver_.dst = std::move(op->value_);
-            executor()->post(receiver_.complete(ErrCode::Success));
+            service<Executor>()->post(receiver_.complete(ErrCode::Success));
 
             *ec = ErrCode::Success;
             return cb;
@@ -108,7 +109,7 @@ class MPSCChannel : supp::Pinned {
 
             *dest = buf_.pop();
             *ec = ErrCode::Success;
-            executor()->post(cb);
+            service<Executor>()->post(cb);
 
             auto* sender = senders_.popFront();
             buf_.push(std::move(sender->value_));

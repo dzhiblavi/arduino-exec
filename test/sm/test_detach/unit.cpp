@@ -1,5 +1,6 @@
 #include "Executor.h"
 
+#include <exec/os/Service.h>
 #include <exec/sm/detach.h>
 
 #include <utest/utest.h>
@@ -41,7 +42,7 @@ struct t_detach {
     };
 
     t_detach() {
-        setExecutor(&executor);
+        setService<Executor>(&executor);
     }
 
     TaskState s;

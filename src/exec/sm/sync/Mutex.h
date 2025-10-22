@@ -1,6 +1,7 @@
 #pragma once
 
 #include "exec/executor/Executor.h"
+#include "exec/os/Service.h"
 #include "exec/sm/Initiator.h"
 
 #include <supp/IntrusiveForwardList.h>
@@ -41,7 +42,7 @@ class Mutex : supp::Pinned {
             return;
         }
 
-        executor()->post(queue_.popFront());
+        service<Executor>()->post(queue_.popFront());
     }
 
  private:

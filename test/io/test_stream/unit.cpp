@@ -1,5 +1,6 @@
 #include "Executor.h"
 
+#include <exec/os/Service.h>
 #include <exec/executor/Executor.h>
 #include <exec/io/stream/sm/AsyncStream.h>
 
@@ -42,7 +43,7 @@ struct t_stream {
     };
 
     t_stream() {
-        exec::setExecutor(&executor);
+        exec::setService<exec::Executor>(&executor);
     }
 
     template <size_t N>

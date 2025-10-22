@@ -10,7 +10,4 @@ class Executor {
     virtual void post(Runnable* r) = 0;
 };
 
-Executor* executor();
-void setExecutor(Executor* exec);
-
 }  // namespace exec

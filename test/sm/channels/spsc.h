@@ -1,5 +1,6 @@
 #include "Executor.h"
 
+#include <exec/os/Service.h>
 #include <exec/Error.h>
 #include <exec/cancel.h>
 #include <exec/executor/Executor.h>
@@ -21,7 +22,7 @@ struct t_spsc_channel {
     };
 
     t_spsc_channel() {
-        exec::setExecutor(&executor);
+        exec::setService<exec::Executor>(&executor);
     }
 
     void test_send_nonblocking() {
