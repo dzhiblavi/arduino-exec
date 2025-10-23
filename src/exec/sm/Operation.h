@@ -31,8 +31,10 @@ class Operation {
         return cb_ != nullptr;
     }
 
- private:
+ protected:
     CancellationSlot slot_;
+
+ private:
     ErrCode* ec_ = nullptr;
     Runnable* cb_ = noop;
 };
