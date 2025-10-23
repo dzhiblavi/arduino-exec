@@ -2,6 +2,8 @@
 
 #include <exec/sm/sync/MPMCChannel.h>
 
+#include <utest/utest.h>
+
 namespace exec {
 
 using Op = ChanOp<int>;

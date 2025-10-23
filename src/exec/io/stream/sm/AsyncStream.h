@@ -8,7 +8,7 @@
 
 #include "exec/Error.h"
 
-#include <log.h>
+#include <logging/log.h>
 
 namespace exec {
 
@@ -35,7 +35,7 @@ class AsyncStream : Runnable {
             return cb;
         }
 
-        LTRACE("Stream::read init async dst=%X left=%d", dst_, *left_);
+        LTRACE("Stream::read init async dst=", dst_, ", left=", *left_);
         op_.initiate(ec, cb, slot);
         return yield()(this);
     }
@@ -43,7 +43,7 @@ class AsyncStream : Runnable {
     // Runnable
     Runnable* run() override {
         if (!op_.outstanding()) {
-            LTRACE("Stream::read cancelled dst=%X left=%d", dst_, *left_);
+            LTRACE("Stream::read cancelled dst=", dst_, ", left=", *left_);
             return noop;
         }
 

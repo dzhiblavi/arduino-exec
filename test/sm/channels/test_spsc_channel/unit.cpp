@@ -2,6 +2,8 @@
 
 #include <exec/sm/sync/SPSCChannel.h>
 
+#include <utest/utest.h>
+
 namespace exec {
 
 struct Op {

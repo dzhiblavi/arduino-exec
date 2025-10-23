@@ -2,6 +2,8 @@
 
 #include <exec/sm/sync/MPSCChannel.h>
 
+#include <utest/utest.h>
+
 namespace exec {
 
 using SendOp = ChanSendOp<int>;
