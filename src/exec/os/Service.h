@@ -26,7 +26,6 @@ I* service() {
 
 template <typename I, typename S>
 void setService(S* instance) {
-    DASSERT(detail::instance_<I> == nullptr);
     detail::instance_<I> = instance;
 }
 
