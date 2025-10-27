@@ -12,7 +12,9 @@ bool Encoder::init(int s1, int s2, int btn) {
 
     attachInterruptArg(digitalPinToInterrupt(s1), Encoder::encISR, this, InterruptMode::Change);
     attachInterruptArg(digitalPinToInterrupt(s2), Encoder::encISR, this, InterruptMode::Change);
-    attachInterruptArg(digitalPinToInterrupt(btn), Encoder::btnISR, this, InterruptMode::Falling);
+    if (int i = digitalPinToInterrupt(btn); i != -1) {
+        attachInterruptArg(i, Encoder::btnISR, this, InterruptMode::Falling);
+    }
 
     return true;
 }
