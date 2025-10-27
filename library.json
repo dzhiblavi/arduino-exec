@@ -4,9 +4,9 @@
     "description": "Minimalistic embedded runtime",
     "authors": [],
     "dependencies": {
-        "log": "^0.0.1",
-        "supp": "^0.0.1",
-        "time": "^0.0.1"
+        "dzhiblavi/logging": "^0.0.4",
+        "dzhiblavi/support": "^0.0.4",
+        "dzhiblavi/time": "^0.0.4"
     },
     "frameworks": "*",
     "platforms": "*",
