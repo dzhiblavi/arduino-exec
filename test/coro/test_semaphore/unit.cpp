@@ -11,13 +11,13 @@ struct t_semaphore {
 };
 
 TEST_F(t_semaphore, try_acquire) {
-    TEST_ASSERT_TRUE(m.try_acquire());
-    TEST_ASSERT_TRUE(m.try_acquire());
-    TEST_ASSERT_FALSE(m.try_acquire());
+    TEST_ASSERT_TRUE(m.tryAcquire());
+    TEST_ASSERT_TRUE(m.tryAcquire());
+    TEST_ASSERT_FALSE(m.tryAcquire());
 
     m.release();
-    TEST_ASSERT_TRUE(m.try_acquire());
-    TEST_ASSERT_FALSE(m.try_acquire());
+    TEST_ASSERT_TRUE(m.tryAcquire());
+    TEST_ASSERT_FALSE(m.tryAcquire());
 }
 
 TEST_F(t_semaphore, acquire_available) {
@@ -35,8 +35,8 @@ TEST_F(t_semaphore, acquire_unavailable) {
         co_await m.acquire();
     }();
 
-    m.try_acquire();
-    m.try_acquire();
+    m.tryAcquire();
+    m.tryAcquire();
 
     coro.resume();
     TEST_ASSERT_FALSE(coro.done());  // blocked
@@ -75,7 +75,7 @@ TEST_F(t_semaphore, acquire_queue) {
     c3.resume();
     TEST_ASSERT_TRUE(c3.done());  // unsuspended
 
-    TEST_ASSERT_TRUE(m.try_acquire());
+    TEST_ASSERT_TRUE(m.tryAcquire());
 }
 
 TEST_F(t_semaphore, connects_cancellation) {
@@ -92,8 +92,8 @@ TEST_F(t_semaphore, cancelled) {
         co_await m.acquire().setCancellationSlot(sig.slot());
     }();
 
-    m.try_acquire();
-    m.try_acquire();
+    m.tryAcquire();
+    m.tryAcquire();
 
     coro.resume();
     TEST_ASSERT_FALSE(coro.done());  // blocked on lock()
@@ -137,7 +137,7 @@ TEST_F(t_semaphore, lock_queue_cancelled) {
     c3.resume();
     TEST_ASSERT_TRUE(c3.done());  // unsuspended
 
-    TEST_ASSERT_TRUE(m.try_acquire());
+    TEST_ASSERT_TRUE(m.tryAcquire());
 }
 
 }  // namespace exec

@@ -10,25 +10,27 @@
 
 namespace exec {
 
-class Semaphore : supp::Pinned {
-    struct [[nodiscard]] Parked : CancellationHandler, supp::IntrusiveListNode {
-        explicit Parked(Semaphore* self) : self_{self} {}
+class Event : supp::Pinned {
+    struct Parked : CancellationHandler, supp::IntrusiveListNode {
+        explicit Parked(Event* self) : self_{self} {}
 
         bool await_ready() noexcept {
-            if (!self_->tryAcquire()) {
+            if (!self_->fired_) {
                 return false;
             }
 
+            // operation is complete
             slot_.clearIfConnected();
             return true;
         }
 
+        // Locked, should park
         void await_suspend(std::coroutine_handle<> caller) {
             caller_ = caller;
             self_->parked_.pushBack(this);
         }
 
-        constexpr Unit await_resume() const noexcept {
+        Unit await_resume() const noexcept {
             return unit;
         }
 
@@ -48,44 +50,52 @@ class Semaphore : supp::Pinned {
             return noop;
         }
 
-        void takeSemaphore() {
+        void fired() {
             slot_.clearIfConnected();
             caller_.resume();
         }
 
-        Semaphore* self_;
+     private:
+        Event* self_;
         std::coroutine_handle<> caller_;
         CancellationSlot slot_;
     };
 
  public:
-    explicit Semaphore(int init) : counter_{init} {}
+    Event() = default;
 
-    bool tryAcquire() {
-        if (counter_ == 0) {
-            return false;
-        }
-
-        --counter_;
-        return true;
+    bool isSet() const {
+        return fired_;
     }
 
-    auto acquire() {
+    auto wait() {
         return Parked{this};
     }
 
-    void release() {
-        if (counter_++ != 0 || parked_.empty()) {
-            return;
-        }
+    void set() {
+        fired_ = true;
+        releaseAll();
+    }
 
-        --counter_;
-        parked_.popFront()->takeSemaphore();
+    void clear() {
+        fired_ = false;
+    }
+
+    void fireOnce() {
+        releaseAll();
     }
 
  private:
+    void releaseAll() {
+        auto parked(std::move(parked_));
+
+        while (!parked.empty()) {
+            parked.popFront()->fired();
+        }
+    }
+
     supp::IntrusiveList<Parked> parked_;
-    int counter_ = 0;
+    bool fired_ = false;
 };
 
 }  // namespace exec

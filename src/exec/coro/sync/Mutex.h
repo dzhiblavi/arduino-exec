@@ -37,7 +37,7 @@ class Mutex : supp::Pinned {
         explicit Parked(Mutex* self) : self_{self} {}
 
         bool await_ready() noexcept {
-            if (!self_->try_lock_raw()) {
+            if (!self_->tryLockRaw()) {
                 return false;
             }
 
@@ -87,7 +87,7 @@ class Mutex : supp::Pinned {
     Mutex() = default;
 
     LockGuard try_lock() {
-        if (try_lock_raw()) {
+        if (tryLockRaw()) {
             return LockGuard{this};
         }
 
@@ -99,7 +99,7 @@ class Mutex : supp::Pinned {
     }
 
  private:
-    bool try_lock_raw() {
+    bool tryLockRaw() {
         if (locked_) {
             return false;
         }
