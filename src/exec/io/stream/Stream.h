@@ -3,6 +3,7 @@
 #if !__has_include(<Stream.h>)
 
 #include <cstdint>
+#include <cstddef>
 
 class Stream {
  public:
@@ -10,7 +11,13 @@ class Stream {
     virtual int available() = 0;
     virtual int read() = 0;
     virtual int peek() = 0;
-    virtual size_t write(uint8_t) = 0;
+};
+
+class Print {
+ public:
+    virtual ~Print() = default;
+    virtual int availableForWrite() = 0;
+    virtual size_t write(const char*, size_t) = 0;
 };
 
 #else
@@ -22,5 +29,6 @@ class Stream {
 namespace exec {
 
 using Stream = ::Stream;
+using Print = ::Print;
 
 }  // namespace exec

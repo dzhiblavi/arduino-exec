@@ -13,4 +13,8 @@ namespace exec {
     };
 }
 
+[[nodiscard]] Runnable* yield(Runnable* ctx) {
+    return yield()(ctx);
+}
+
 }  // namespace exec

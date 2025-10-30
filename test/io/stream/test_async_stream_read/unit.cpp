@@ -1,7 +1,7 @@
 #include "Executor.h"
 
 #include <exec/executor/Executor.h>
-#include <exec/io/stream/sm/AsyncStream.h>
+#include <exec/io/stream/sm/AsyncStreamRead.h>
 #include <exec/os/Service.h>
 
 #include <supp/CircularBuffer.h>
@@ -10,7 +10,7 @@
 
 namespace exec {
 
-struct TestStream : public ::Stream {
+struct TestStream : public Stream {
     virtual ~TestStream() = default;
 
     int available() override {
@@ -25,15 +25,10 @@ struct TestStream : public ::Stream {
         return buf.front();
     }
 
-    size_t write(uint8_t) override {
-        TEST_FAIL();
-        return 0;
-    }
-
     supp::CircularBuffer<int, 10> buf;
 };
 
-struct t_stream {
+struct t_async_stream_read {
     struct Task : Runnable {
         Task() = default;
 
@@ -42,7 +37,7 @@ struct t_stream {
         }
     };
 
-    t_stream() {
+    t_async_stream_read() {
         exec::setService<exec::Executor>(&executor);
     }
 
@@ -64,60 +59,60 @@ struct t_stream {
     ErrCode ec = ErrCode::Unknown;
     TestStream stream;
     Task t;
-    AsyncStream s{&stream};
+    AsyncStreamRead s{&stream};
     test::Executor executor;
 };
 
-TEST_F(t_stream, test_read_all_available) {
+TEST_F(t_async_stream_read, test_read_all_available) {
     push("abacaba");
     int left = 4;
-    TEST_ASSERT_EQUAL(&t, s.read(dst, &left, &ec)(&t));
+    TEST_ASSERT_EQUAL(&t, s(dst, &left, &ec)(&t));
     TEST_ASSERT_EQUAL(ErrCode::Success, ec);
     TEST_ASSERT_EQUAL(0, left);
     check("abac");
 }
 
-TEST_F(t_stream, test_read_none_available) {
+TEST_F(t_async_stream_read, test_read_none_available) {
     int left = 4;
-    TEST_ASSERT_EQUAL(noop, s.read(dst, &left, &ec)(&t));
+    TEST_ASSERT_EQUAL(noop, s(dst, &left, &ec)(&t));
     TEST_ASSERT_EQUAL(1, executor.queued.size());
     TEST_ASSERT_EQUAL(&s, executor.queued.popFront());
     TEST_ASSERT_EQUAL(ErrCode::Unknown, ec);
     TEST_ASSERT_EQUAL(4, left);
 }
 
-TEST_F(t_stream, test_read_connects_cancellation) {
+TEST_F(t_async_stream_read, test_read_connects_cancellation) {
     CancellationSignal sig;
     int left = 4;
-    s.read(dst, &left, &ec)(&t, sig.slot());
+    s(dst, &left, &ec)(&t, sig.slot());
     TEST_ASSERT_TRUE(sig.hasHandler());
 }
 
-TEST_F(t_stream, test_read_none_cancelled) {
+TEST_F(t_async_stream_read, test_read_none_cancelled) {
     CancellationSignal sig;
     int left = 4;
-    s.read(dst, &left, &ec)(&t, sig.slot());
+    s(dst, &left, &ec)(&t, sig.slot());
     TEST_ASSERT_EQUAL(&t, sig.emitRaw());
     TEST_ASSERT_EQUAL(ErrCode::Cancelled, ec);
     TEST_ASSERT_EQUAL(4, left);
     TEST_ASSERT_FALSE(sig.hasHandler());
 }
 
-TEST_F(t_stream, test_read_partial) {
+TEST_F(t_async_stream_read, test_read_partial) {
     int left = 4;
     push("ab");
-    TEST_ASSERT_EQUAL(noop, s.read(dst, &left, &ec)(&t));
+    TEST_ASSERT_EQUAL(noop, s(dst, &left, &ec)(&t));
     TEST_ASSERT_EQUAL(1, executor.queued.size());
     TEST_ASSERT_EQUAL(&s, executor.queued.popFront());
     TEST_ASSERT_EQUAL(2, left);
     check("ab");
 }
 
-TEST_F(t_stream, test_read_partial_cancelled) {
+TEST_F(t_async_stream_read, test_read_partial_cancelled) {
     CancellationSignal sig;
     int left = 4;
     push("ab");
-    s.read(dst, &left, &ec)(&t, sig.slot());
+    s(dst, &left, &ec)(&t, sig.slot());
     TEST_ASSERT_EQUAL(&t, sig.emitRaw());
     TEST_ASSERT_EQUAL(ErrCode::Cancelled, ec);
     TEST_ASSERT_EQUAL(2, left);
@@ -125,12 +120,12 @@ TEST_F(t_stream, test_read_partial_cancelled) {
     check("ab");
 }
 
-TEST_F(t_stream, test_read_multipart) {
+TEST_F(t_async_stream_read, test_read_multipart) {
     CancellationSignal sig;
     int left = 6;
 
     push("ab");
-    s.read(dst, &left, &ec)(&t, sig.slot());
+    s(dst, &left, &ec)(&t, sig.slot());
     TEST_ASSERT_EQUAL(1, executor.queued.size());
     auto r = executor.queued.popFront();
     TEST_ASSERT_EQUAL(&s, r);
