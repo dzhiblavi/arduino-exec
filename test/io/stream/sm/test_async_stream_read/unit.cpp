@@ -1,4 +1,5 @@
 #include "Executor.h"
+#include "io/stream/TestStream.h"
 
 #include <exec/executor/Executor.h>
 #include <exec/io/stream/sm/AsyncStreamRead.h>
@@ -9,24 +10,6 @@
 #include <utest/utest.h>
 
 namespace exec {
-
-struct TestStream : public Stream {
-    virtual ~TestStream() = default;
-
-    int available() override {
-        return static_cast<int>(buf.size());
-    }
-
-    int read() override {
-        return buf.empty() ? -1 : buf.pop();
-    }
-
-    int peek() override {
-        return buf.front();
-    }
-
-    supp::CircularBuffer<int, 10> buf;
-};
 
 struct t_async_stream_read {
     struct Task : Runnable {
@@ -57,7 +40,7 @@ struct t_async_stream_read {
 
     char dst[20]{};
     ErrCode ec = ErrCode::Unknown;
-    TestStream stream;
+    test::Stream stream;
     Task t;
     AsyncStreamRead s{&stream};
     test::Executor executor;

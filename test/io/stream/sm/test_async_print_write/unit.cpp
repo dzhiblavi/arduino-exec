@@ -1,4 +1,5 @@
 #include "Executor.h"
+#include "io/stream/TestPrint.h"
 
 #include <exec/executor/Executor.h>
 #include <exec/io/stream/sm/AsyncStreamWrite.h>
@@ -9,24 +10,6 @@
 #include <utest/utest.h>
 
 namespace exec {
-
-struct TestPrint : public Print {
-    virtual ~TestPrint() = default;
-
-    int availableForWrite() override {
-        return static_cast<int>(buf.capacity() - buf.size());
-    }
-
-    size_t write(const char* b, size_t size) override {
-        size = std::min(size, buf.capacity() - buf.size());
-        for (size_t i = 0; i < size; ++i) {
-            buf.push(b[i]);  // NOLINT
-        }
-        return size;
-    }
-
-    supp::CircularBuffer<char, 10> buf;
-};
 
 struct t_async_print_write {
     struct Task : Runnable {
@@ -61,7 +44,7 @@ struct t_async_print_write {
     }
 
     ErrCode ec = ErrCode::Unknown;
-    TestPrint print;
+    test::Print print;
     Task t;
     AsyncPrintWrite s{&print};
     test::Executor executor;

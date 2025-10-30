@@ -1,9 +1,24 @@
 #pragma once
 
-#if !__has_include(<Stream.h>)
+#if __has_include(<Stream.h>)
 
-#include <cstdint>
+#include <Stream.h>
+
+#else
+
 #include <cstddef>
+#include <cstdint>
+
+#endif
+
+namespace exec {
+
+#if __has_include(<Stream.h>)
+
+using Stream = ::Stream;
+using Print = ::Print;
+
+#else
 
 class Stream {
  public:
@@ -20,15 +35,6 @@ class Print {
     virtual size_t write(const char*, size_t) = 0;
 };
 
-#else
-
-#include <Stream.h>
-
 #endif
-
-namespace exec {
-
-using Stream = ::Stream;
-using Print = ::Print;
 
 }  // namespace exec

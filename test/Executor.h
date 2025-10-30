@@ -2,7 +2,7 @@
 
 #include <exec/executor/Executor.h>
 
-namespace test {
+namespace exec::test {
 
 class Executor : public exec::Executor {
  public:
@@ -13,4 +13,4 @@ class Executor : public exec::Executor {
     supp::IntrusiveForwardList<exec::Runnable> queued;
 };
 
-}  // namespace test
+}  // namespace exec::test
