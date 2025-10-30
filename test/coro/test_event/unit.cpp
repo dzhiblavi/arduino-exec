@@ -21,8 +21,8 @@ TEST_F(t_event, isSet) {
 
 TEST_F(t_event, fire_once) {
     auto coro = [&]() -> Async<> {
-        co_await m.wait();
-        co_await m.wait();
+        TEST_ASSERT_EQUAL(ErrCode::Success, co_await m.wait());
+        TEST_ASSERT_EQUAL(ErrCode::Success, co_await m.wait());
     }();
 
     coro.resume();
@@ -35,8 +35,8 @@ TEST_F(t_event, fire_once) {
 
 TEST_F(t_event, set) {
     auto coro = [&]() -> Async<> {
-        co_await m.wait();
-        co_await m.wait();
+        TEST_ASSERT_EQUAL(ErrCode::Success, co_await m.wait());
+        TEST_ASSERT_EQUAL(ErrCode::Success, co_await m.wait());
     }();
 
     coro.resume();
@@ -47,9 +47,9 @@ TEST_F(t_event, set) {
 
 TEST_F(t_event, clear) {
     auto coro = [&]() -> Async<> {
-        co_await m.wait();
+        TEST_ASSERT_EQUAL(ErrCode::Success, co_await m.wait());
         m.clear();
-        co_await m.wait();
+        TEST_ASSERT_EQUAL(ErrCode::Success, co_await m.wait());
     }();
 
     coro.resume();
@@ -62,8 +62,8 @@ TEST_F(t_event, clear) {
 
 TEST_F(t_event, wait_queue_set) {
     auto make_coro = [&]() -> Async<> {
-        co_await m.wait();
-        co_await m.wait();
+        TEST_ASSERT_EQUAL(ErrCode::Success, co_await m.wait());
+        TEST_ASSERT_EQUAL(ErrCode::Success, co_await m.wait());
     };
 
     auto c1 = make_coro();
@@ -85,8 +85,8 @@ TEST_F(t_event, wait_queue_set) {
 
 TEST_F(t_event, wait_queue_fire_once) {
     auto make_coro = [&]() -> Async<> {
-        co_await m.wait();
-        co_await m.wait();
+        TEST_ASSERT_EQUAL(ErrCode::Success, co_await m.wait());
+        TEST_ASSERT_EQUAL(ErrCode::Success, co_await m.wait());
     };
 
     auto c1 = make_coro();
@@ -122,7 +122,7 @@ TEST_F(t_event, cancelled) {
     CancellationSignal sig;
 
     auto coro = [&]() -> Async<> {  //
-        co_await m.wait().setCancellationSlot(sig.slot());
+        TEST_ASSERT_EQUAL(ErrCode::Cancelled, co_await m.wait().setCancellationSlot(sig.slot()));
     }();
 
     coro.resume();
@@ -131,15 +131,15 @@ TEST_F(t_event, cancelled) {
     TEST_ASSERT_TRUE(coro.done());  // released
 }
 
-TEST_F(t_event, wait__queue_cancelled) {
+TEST_F(t_event, wait_queue_cancelled) {
     CancellationSignal sig;
 
     auto make_coro_cancellable = [&]() -> Async<> {  //
-        co_await m.wait().setCancellationSlot(sig.slot());
+        TEST_ASSERT_EQUAL(ErrCode::Cancelled, co_await m.wait().setCancellationSlot(sig.slot()));
     };
 
     auto make_coro = [&]() -> Async<> {  //
-        co_await m.wait();
+        TEST_ASSERT_EQUAL(ErrCode::Success, co_await m.wait());
     };
 
     auto c1 = make_coro();

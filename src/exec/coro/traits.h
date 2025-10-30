@@ -1,5 +1,7 @@
 #pragma once
 
+#include "exec/cancel.h"
+
 #include <utility>
 
 namespace exec {
@@ -37,5 +39,10 @@ struct awaitable_result {
 
 template <class T>
 using awaitable_result_t = typename awaitable_result<T>::type;
+
+template <typename Awaitable>
+concept CancellableAwaitable = requires(Awaitable& a, CancellationSlot slot) {
+    { a.setCancellationSlot(slot) };
+};
 
 }  // namespace exec

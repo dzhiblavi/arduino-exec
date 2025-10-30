@@ -22,8 +22,8 @@ TEST_F(t_semaphore, try_acquire) {
 
 TEST_F(t_semaphore, acquire_available) {
     auto coro = [&]() -> Async<> {
-        co_await m.acquire();
-        co_await m.acquire();
+        TEST_ASSERT_EQUAL(ErrCode::Success, co_await m.acquire());
+        TEST_ASSERT_EQUAL(ErrCode::Success, co_await m.acquire());
     }();
 
     coro.resume();
@@ -32,7 +32,7 @@ TEST_F(t_semaphore, acquire_available) {
 
 TEST_F(t_semaphore, acquire_unavailable) {
     auto coro = [&]() -> Async<> {  //
-        co_await m.acquire();
+        TEST_ASSERT_EQUAL(ErrCode::Success, co_await m.acquire());
     }();
 
     m.tryAcquire();
@@ -47,7 +47,7 @@ TEST_F(t_semaphore, acquire_unavailable) {
 
 TEST_F(t_semaphore, acquire_queue) {
     auto make_coro = [&]() -> Async<> {
-        co_await m.acquire();
+        TEST_ASSERT_EQUAL(ErrCode::Success, co_await m.acquire());
         co_await std::suspend_always{};
         m.release();
     };
@@ -89,7 +89,7 @@ TEST_F(t_semaphore, cancelled) {
     CancellationSignal sig;
 
     auto coro = [&]() -> Async<> {  //
-        co_await m.acquire().setCancellationSlot(sig.slot());
+        TEST_ASSERT_EQUAL(ErrCode::Cancelled, co_await m.acquire().setCancellationSlot(sig.slot()));
     }();
 
     m.tryAcquire();
@@ -105,11 +105,11 @@ TEST_F(t_semaphore, lock_queue_cancelled) {
     CancellationSignal sig;
 
     auto make_coro_cancellable = [&]() -> Async<> {
-        co_await m.acquire().setCancellationSlot(sig.slot());
+        TEST_ASSERT_EQUAL(ErrCode::Cancelled, co_await m.acquire().setCancellationSlot(sig.slot()));
     };
 
     auto make_coro = [&]() -> Async<> {
-        co_await m.acquire();
+        TEST_ASSERT_EQUAL(ErrCode::Success, co_await m.acquire());
         co_await std::suspend_always{};
         m.release();
     };

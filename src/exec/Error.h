@@ -5,9 +5,9 @@
 namespace exec {
 
 enum class ErrCode : uint8_t {
-    Success = 0,
+    Unknown = 0,
     Cancelled,
-    Unknown,
+    Success,
 };
 
 }  // namespace exec

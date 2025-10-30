@@ -1,6 +1,6 @@
 #pragma once
 
-#include "exec/Unit.h"
+#include "exec/Error.h"
 #include "exec/cancel.h"
 
 #include <supp/IntrusiveList.h>
@@ -13,6 +13,19 @@ namespace exec {
 class Semaphore : supp::Pinned {
     struct [[nodiscard]] Parked : CancellationHandler, supp::IntrusiveListNode {
         explicit Parked(Semaphore* self) : self_{self} {}
+
+        // not copyable
+        Parked(const Parked&) = delete;
+        Parked& operator=(const Parked&) = delete;
+
+        Parked(Parked&& rhs) noexcept
+            : self_{std::exchange(rhs.self_, nullptr)}
+            , caller_(std::exchange(rhs.caller_, caller_))
+            , slot_(rhs.slot_) {
+            if (slot_.hasHandler()) {
+                slot_.installIfConnected(this);
+            }
+        }
 
         bool await_ready() noexcept {
             if (!self_->tryAcquire()) {
@@ -28,8 +41,8 @@ class Semaphore : supp::Pinned {
             self_->parked_.pushBack(this);
         }
 
-        constexpr Unit await_resume() const noexcept {
-            return unit;
+        ErrCode await_resume() const noexcept {
+            return self_ == nullptr ? ErrCode::Cancelled : ErrCode::Success;
         }
 
         // CancellableAwaitable
