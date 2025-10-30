@@ -98,7 +98,7 @@ TEST_F(t_mutex, lock_queue) {
 
 TEST_F(t_mutex, connects_cancellation) {
     CancellationSignal sig;
-    auto op = m.lock().setCancellationSlot(sig.slot());
+    [[maybe_unused]] auto&& op = m.lock().setCancellationSlot(sig.slot());
 
     TEST_ASSERT_TRUE(sig.hasHandler());
 }

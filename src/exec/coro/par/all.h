@@ -65,7 +65,7 @@ struct AllState : CancellationHandler, supp::Pinned {
 };
 
 template <typename T, size_t Index, typename State>
-struct AllTask {
+struct AllTask : supp::Pinned {
     struct promise_type {
         promise_type(auto& /*task*/, State* state) : state{state} {}
 
@@ -109,11 +109,7 @@ struct AllTask {
     };
 
     AllTask(std::coroutine_handle<> h) : coro{h} {}
-    AllTask(AllTask&& r) noexcept : coro{std::exchange(r.coro, nullptr)} {}
-
-    // not copyable
-    AllTask(const AllTask&) = delete;
-    AllTask& operator=(const AllTask&) = delete;
+    AllTask(AllTask&& rhs) noexcept : coro{std::exchange(rhs.coro, nullptr)} {}
 
     ~AllTask() {
         if (!coro) {
@@ -165,7 +161,9 @@ struct AllAwaitable : supp::Pinned {
 
     AllTasksTuple tasks_;
 
-    AllAwaitable(Tasks... tasks) : tasks_{makeAllTasksTuple(&state_, std::forward<Tasks>(tasks)...)} {}
+    template <typename... Args>
+    AllAwaitable(Args&&... tasks)
+        : tasks_{makeAllTasksTuple(&state_, std::forward<Args>(tasks)...)} {}
 
     bool await_ready() noexcept {
         // start all tasks
@@ -201,7 +199,7 @@ struct AllAwaitable : supp::Pinned {
 
 template <typename... Tasks>
 auto all(Tasks&&... tasks) {
-    return detail::AllAwaitable<Tasks&&...>(std::forward<Tasks>(tasks)...);
+    return detail::AllAwaitable<Tasks...>(std::forward<Tasks>(tasks)...);
 }
 
 }  // namespace exec

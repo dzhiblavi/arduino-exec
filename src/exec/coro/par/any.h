@@ -20,7 +20,7 @@ namespace detail {
 // CancellableAwaitable
 // Cancels all child tasks when the first one completes, then waits for all of them to complete.
 template <typename... Ts>
-struct AnyState : CancellationHandler {
+struct AnyState : CancellationHandler, supp::Pinned {
     std::coroutine_handle<> arrived() {
         auto cur_counter = --counter;
 
@@ -76,7 +76,7 @@ struct AnyState : CancellationHandler {
 };
 
 template <typename T, size_t Index, typename State>
-struct AnyTask {
+struct AnyTask : supp::Pinned {
     struct promise_type {
         promise_type(auto& /*task*/, State* state) : state{state} {}
 
@@ -120,11 +120,7 @@ struct AnyTask {
     };
 
     AnyTask(std::coroutine_handle<> h) : coro{h} {}
-    AnyTask(AnyTask&& r) noexcept : coro{std::exchange(r.coro, nullptr)} {}
-
-    // not copyable
-    AnyTask(const AnyTask&) = delete;
-    AnyTask& operator=(const AnyTask&) = delete;
+    AnyTask(AnyTask&& rhs) noexcept : coro{std::exchange(rhs.coro, nullptr)} {}
 
     ~AnyTask() {
         if (!coro) {
@@ -176,8 +172,9 @@ struct AnyAwaitable : supp::Pinned {
 
     AnyTasksTuple tasks_;
 
-    AnyAwaitable(Tasks... tasks)
-        : tasks_{makeAnyTasksTuple(&state_, std::forward<Tasks>(tasks)...)} {}
+    template <typename... Args>
+    AnyAwaitable(Args&&... tasks)
+        : tasks_{makeAnyTasksTuple(&state_, std::forward<Args>(tasks)...)} {}
 
     bool await_ready() noexcept {
         // start all tasks
@@ -214,7 +211,7 @@ struct AnyAwaitable : supp::Pinned {
 
 template <typename... Tasks>
 auto any(Tasks&&... tasks) {
-    return detail::AnyAwaitable<Tasks&&...>(std::forward<Tasks>(tasks)...);
+    return detail::AnyAwaitable<Tasks...>(std::forward<Tasks>(tasks)...);
 }
 
 }  // namespace exec

@@ -14,9 +14,8 @@ namespace exec {
 
 // Cancellable delay
 auto wait(ttime::Duration d) {
-    struct Awaitable : Runnable, CancellationHandler {
+    struct Awaitable : Runnable, CancellationHandler, supp::Pinned {
         Awaitable(ttime::Duration d) : d{d} {}
-        Awaitable(Awaitable&& r) noexcept : d{r.d} {}
 
         bool await_ready() noexcept {
             if (d.micros() > 0) {

@@ -80,7 +80,7 @@ TEST_F(t_semaphore, acquire_queue) {
 
 TEST_F(t_semaphore, connects_cancellation) {
     CancellationSignal sig;
-    auto op = m.acquire().setCancellationSlot(sig.slot());
+    [[maybe_unused]] auto&& op = m.acquire().setCancellationSlot(sig.slot());
 
     TEST_ASSERT_TRUE(sig.hasHandler());
 }

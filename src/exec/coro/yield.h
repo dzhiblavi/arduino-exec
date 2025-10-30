@@ -4,13 +4,17 @@
 #include "exec/executor/Executor.h"
 #include "exec/os/Service.h"
 
+#include <supp/Pinned.h>
+
 #include <coroutine>
 
 namespace exec {
 
 // Not cancellable
 auto yield() {
-    struct Awaitable : Runnable {
+    struct Awaitable : Runnable, supp::Pinned {
+        Awaitable() = default;
+
         constexpr bool await_ready() const noexcept {
             return false;
         }

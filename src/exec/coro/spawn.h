@@ -5,6 +5,8 @@
 #include "exec/executor/Executor.h"
 #include "exec/os/Service.h"
 
+#include <supp/Pinned.h>
+
 #include <utility>
 
 namespace exec {
@@ -61,17 +63,16 @@ struct SpawnPromise {
 };
 
 template <typename T>
-struct SpawnTask : Runnable {
+struct SpawnTask : Runnable, supp::Pinned {
     using promise_type = SpawnPromise<T>;
     using coroutine_handle_t = std::coroutine_handle<promise_type>;
 
     SpawnTask(coroutine_handle_t coro) noexcept : coro_{coro} {}
+    SpawnTask(SpawnTask&& r) noexcept : coro_{std::exchange(r.coro_, nullptr)} {}
 
     // not copyable
     SpawnTask(const SpawnTask&) = delete;
     SpawnTask& operator=(const SpawnTask&) = delete;
-
-    SpawnTask(SpawnTask&& r) noexcept : coro_{std::exchange(r.coro_, nullptr)} {}
 
     ~SpawnTask() noexcept {
         if (!coro_) {
@@ -106,7 +107,7 @@ void launch(SpawnTask<T> task) {
 }  // namespace detail
 
 template <typename F>
-void spawn(F task) {
+void spawn(F&& task) {
     launch(detail::spawn(task()));
 }
 

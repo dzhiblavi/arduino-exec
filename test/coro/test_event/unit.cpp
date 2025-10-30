@@ -113,7 +113,7 @@ TEST_F(t_event, wait_queue_fire_once) {
 
 TEST_F(t_event, connects_cancellation) {
     CancellationSignal sig;
-    auto op = m.wait().setCancellationSlot(sig.slot());
+    [[maybe_unused]] auto&& op = m.wait().setCancellationSlot(sig.slot());
 
     TEST_ASSERT_TRUE(sig.hasHandler());
 }

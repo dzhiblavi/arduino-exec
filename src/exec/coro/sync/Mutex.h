@@ -33,21 +33,8 @@ class [[nodiscard]] LockGuard {
 };
 
 class Mutex : supp::Pinned {
-    struct Parked : CancellationHandler, supp::IntrusiveListNode {
+    struct Parked : CancellationHandler, supp::IntrusiveListNode, supp::Pinned {
         explicit Parked(Mutex* self) : self_{self} {}
-
-        // not copyable
-        Parked(const Parked&) = delete;
-        Parked& operator=(const Parked&) = delete;
-
-        Parked(Parked&& rhs) noexcept
-            : self_{std::exchange(rhs.self_, nullptr)}
-            , caller_(std::exchange(rhs.caller_, caller_))
-            , slot_(rhs.slot_) {
-            if (slot_.hasHandler()) {
-                slot_.installIfConnected(this);
-            }
-        }
 
         bool await_ready() noexcept {
             if (!self_->tryLockRaw()) {
