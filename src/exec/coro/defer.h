@@ -12,22 +12,15 @@ namespace exec {
 
 // Not cancellable
 auto defer(ttime::Duration d) {
-    struct Awaitable : Runnable, supp::Pinned {
-        Awaitable(ttime::Duration d) : d{d} {}
-
-        // Awaitable(Awaitable&& rhs) noexcept
-        //: caller{std::exchange(rhs.caller, nullptr)}
-        //, d{rhs.d} {}
-
-        // Awaitable(const Awaitable&) = delete;
-        // Awaitable& operator=(const Awaitable&) = delete;
+    struct [[nodiscard]] Awaitable : Runnable, supp::Pinned {
+        Awaitable(ttime::Duration d) noexcept : d{d} {}
 
         bool await_ready() const noexcept {
             return d.micros() == 0;
         }
 
         // d > 0 (see await_ready)
-        void await_suspend(std::coroutine_handle<> caller) {
+        void await_suspend(std::coroutine_handle<> caller) noexcept {
             this->caller = caller;
             service<DeferService>()->defer(this, ttime::mono::now() + d);
         }
@@ -36,13 +29,13 @@ auto defer(ttime::Duration d) {
             return unit;
         }
 
-        Runnable* run() override {
+        Runnable* run() noexcept override {
             caller.resume();
             return noop;
         }
 
         std::coroutine_handle<> caller;
-        ttime::Duration d;
+        const ttime::Duration d;
     };
 
     return Awaitable{d};

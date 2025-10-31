@@ -14,8 +14,8 @@ namespace exec {
 
 // Cancellable delay
 auto wait(ttime::Duration d) {
-    struct Awaitable : Runnable, CancellationHandler, supp::Pinned {
-        Awaitable(ttime::Duration d) : d{d} {}
+    struct [[nodiscard]] Awaitable : Runnable, CancellationHandler, supp::Pinned {
+        Awaitable(ttime::Duration d) noexcept : d{d} {}
 
         bool await_ready() noexcept {
             if (d.micros() > 0) {
@@ -39,7 +39,8 @@ auto wait(ttime::Duration d) {
         }
 
         // called when timer went off
-        Runnable* run() override {
+        Runnable* run() noexcept override {
+            DASSERT(code_ == ErrCode::Unknown);
             slot_.clearIfConnected();
             code_ = ErrCode::Success;
             awaiter.resume();
@@ -47,7 +48,7 @@ auto wait(ttime::Duration d) {
         }
 
         // called when cancellation is signalled
-        Runnable* cancel() override {
+        Runnable* cancel() noexcept override {
             slot_.clearIfConnected();
 
             if (!service<TimerService>()->remove(&entry_)) {
@@ -61,7 +62,7 @@ auto wait(ttime::Duration d) {
         }
 
         // CancellableAwaitable
-        Awaitable& setCancellationSlot(CancellationSlot slot) {
+        Awaitable& setCancellationSlot(CancellationSlot slot) noexcept {
             slot_ = slot;
             slot_.installIfConnected(this);
             return *this;
@@ -71,7 +72,7 @@ auto wait(ttime::Duration d) {
         CancellationSlot slot_;
         std::coroutine_handle<> awaiter;
         TimerEntry entry_;
-        ttime::Duration d;
+        const ttime::Duration d;
     };
 
     return Awaitable{d};

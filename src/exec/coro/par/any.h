@@ -3,6 +3,7 @@
 #include "exec/cancel.h"
 #include "exec/coro/traits.h"
 
+#include <supp/ManualLifetime.h>
 #include <supp/tuple.h>
 
 #include <array>
@@ -38,8 +39,7 @@ struct AnyState : CancellationHandler, supp::Pinned {
 
     template <size_t I, typename U>
     void returnValue(U&& value) {
-        // NOTE: NO MANUAL LIFETIME
-        get<I>(result) = std::forward<U>(value);
+        std::get<I>(result).emplace(std::forward<U>(value));
     }
 
     bool done() {
@@ -69,7 +69,7 @@ struct AnyState : CancellationHandler, supp::Pinned {
 
     uint8_t counter = sizeof...(Ts);
     std::coroutine_handle<> all_waiter = std::noop_coroutine();
-    std::tuple<Ts...> result{};
+    std::tuple<supp::ManualLifetime<Ts>...> result{};
 
     CancellationSlot slot_;
     std::array<CancellationSignal, sizeof...(Ts)> child_signals_;
@@ -94,9 +94,10 @@ struct AnyTask : supp::Pinned {
                     return false;
                 }
 
-                std::coroutine_handle<> await_suspend(std::coroutine_handle<> /*caller*/) noexcept {
-                    // Caller is to be ignored.
-                    return state->arrived();
+                std::coroutine_handle<> await_suspend(std::coroutine_handle<> self) noexcept {
+                    auto* state_copy = state;
+                    self.destroy();
+                    return state_copy->arrived();
                 }
 
                 constexpr void await_resume() const noexcept {}
@@ -121,14 +122,6 @@ struct AnyTask : supp::Pinned {
 
     AnyTask(std::coroutine_handle<> h) : coro{h} {}
     AnyTask(AnyTask&& rhs) noexcept : coro{std::exchange(rhs.coro, nullptr)} {}
-
-    ~AnyTask() {
-        if (!coro) {
-            return;
-        }
-
-        coro.destroy();
-    }
 
     void start() {
         coro.resume();
@@ -197,7 +190,9 @@ struct [[nodiscard]] AnyAwaitable : supp::Pinned {
     }
 
     ResultType await_resume() noexcept {
-        return std::move(state_.result);
+        return std::apply(
+            [](auto&&... rs) { return ResultType(std::move(rs).get()...); },
+            std::move(state_.result));
     }
 
     // CancellableAwaitable

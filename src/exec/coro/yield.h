@@ -12,8 +12,8 @@ namespace exec {
 
 // Not cancellable
 auto yield() {
-    struct Awaitable : Runnable, supp::Pinned {
-        Awaitable() = default;
+    struct [[nodiscard]] Awaitable : Runnable, supp::Pinned {
+        Awaitable() noexcept = default;
 
         constexpr bool await_ready() const noexcept {
             return false;
@@ -28,7 +28,7 @@ auto yield() {
             return unit;
         }
 
-        Runnable* run() override {
+        Runnable* run() noexcept override {
             caller.resume();
             return noop;
         }
