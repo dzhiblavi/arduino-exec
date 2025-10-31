@@ -162,7 +162,7 @@ auto makeAnyTasksTuple(State* state, Tasks&&... tasks) {
 }
 
 template <typename... Tasks>
-struct AnyAwaitable : supp::Pinned {
+struct [[nodiscard]] AnyAwaitable : supp::Pinned {
     using StateType = AnyState<awaitable_result_t<Tasks>...>;
     using ResultType = std::tuple<awaitable_result_t<Tasks>...>;
 

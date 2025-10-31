@@ -32,8 +32,10 @@ class AsyncPromiseBase {
         }
 
         template <typename Promise>
-        std::coroutine_handle<> await_suspend(std::coroutine_handle<Promise> coro) noexcept {
-            return coro.promise().continuation_;
+        std::coroutine_handle<> await_suspend(std::coroutine_handle<Promise> self) noexcept {
+            auto continuation = self.promise().continuation_;
+            self.destroy();
+            return continuation;
         }
 
         void await_resume() noexcept {}
@@ -104,12 +106,12 @@ class AsyncPromiseBase {
     }
 
     void* operator new(size_t size) {
-        LTRACE(F("allocating for coroutine state: "), size);
+        LTRACE(F("allocating coroutine state: "), size);
         return ::operator new(size);
     }
 
     void operator delete(void* ptr, size_t size) {
-        LTRACE(F("allocating from coroutine state: "), size);
+        LTRACE(F("deallocating coroutine state: "), size);
         ::operator delete(ptr, size);
     }
 
@@ -129,15 +131,16 @@ class AsyncPromise : public AsyncPromiseBase {
 
     template <typename U>
     void return_value(U&& value) noexcept {
-        result_.emplace(std::forward<U>(value));
+        DASSERT(result_);
+        result_->emplace(std::forward<U>(value));
     }
 
-    supp::ManualLifetime<T> result() && {
-        return std::move(result_);
+    void setResultPtr(supp::ManualLifetime<T>* ptr) {
+        result_ = ptr;
     }
 
  private:
-    supp::ManualLifetime<T> result_;
+    supp::ManualLifetime<T>* result_ = nullptr;
 };
 
 template <>
@@ -150,15 +153,16 @@ class AsyncPromise<Unit> : public AsyncPromiseBase {
     }
 
     void return_void() noexcept {
-        result_.emplace(unit);
+        DASSERT(result_);
+        result_->emplace(unit);
     }
 
-    supp::ManualLifetime<Unit> result() && {
-        return std::move(result_);
+    void setResultPtr(supp::ManualLifetime<Unit>* ptr) {
+        result_ = ptr;
     }
 
  private:
-    supp::ManualLifetime<Unit> result_;
+    supp::ManualLifetime<Unit>* result_ = nullptr;
 };
 
 }  // namespace detail
@@ -177,37 +181,20 @@ class [[nodiscard]] Async {
     Async(const Async&) = delete;
     Async& operator=(const Async&) = delete;
 
-    ~Async() {
-        if (!coroutine_) {
-            // coroutine is destroyed or has never been alive
-            return;
-        }
-
-        if (!done()) {
-            LWARN("destroying a non-finished coroutine");
-        }
-
-        coroutine_.destroy();
-    }
-
-    void resume() {
-        // only suspended, !done coroutines can be resumed
-        return coroutine_.resume();
-    }
-
-    bool done() const noexcept {
-        // only suspended coroutines can be queried
-        return coroutine_.done();
+    ~Async() noexcept {
+        DASSERT(!coroutine_, F("Async<T> has not been consumed"));
     }
 
     // CancellableAwaitable
     Async& setCancellationSlot(CancellationSlot slot) & noexcept {
+        DASSERT(coroutine_, F("Async<T> has been consumed"));
         coroutine_.promise().setCancellationSlot(slot);
         return *this;
     }
 
     // CancellableAwaitable
     Async setCancellationSlot(CancellationSlot slot) && noexcept {
+        DASSERT(coroutine_, F("Async<T> has been consumed"));
         coroutine_.promise().setCancellationSlot(slot);
         return std::move(*this);
     }
@@ -215,31 +202,27 @@ class [[nodiscard]] Async {
     auto operator co_await() noexcept {
         struct Awaitable {
             bool await_ready() const noexcept {
-                return !coroutine || coroutine.done();
+                return coroutine_.done();
             }
 
             std::coroutine_handle<> await_suspend(std::coroutine_handle<> caller) noexcept {
-                coroutine.promise().setContinuation(caller);
-                return coroutine;
+                auto& promise = coroutine_.promise();
+                promise.setResultPtr(&result_);
+                promise.setContinuation(caller);
+                return coroutine_;
             }
 
             T await_resume() noexcept {
-                DASSERT(coroutine);
-
-                // pull out the result of the coroutine
-                auto res = std::move(coroutine.promise()).result();
-
-                // now we can release the coroutine frame
-                std::exchange(coroutine, nullptr).destroy();
-
-                DASSERT(res.initialized(), "nothing returned from an Async<T>");
-                return std::move(res).get();
+                DASSERT(result_.initialized(), "nothing returned from an Async<T>");
+                return std::move(result_).get();
             }
 
-            std::coroutine_handle<promise_type> coroutine;
+            std::coroutine_handle<promise_type> coroutine_;
+            supp::ManualLifetime<T> result_{};
         };
 
         // co_await is a destructive operation for Async<T>
+        DASSERT(coroutine_, "Async<T> has been consumed");
         return Awaitable{std::exchange(coroutine_, nullptr)};
     }
 

@@ -33,7 +33,7 @@ class [[nodiscard]] LockGuard {
 };
 
 class Mutex : supp::Pinned {
-    struct Parked : CancellationHandler, supp::IntrusiveListNode, supp::Pinned {
+    struct [[nodiscard]] Parked : CancellationHandler, supp::IntrusiveListNode, supp::Pinned {
         explicit Parked(Mutex* self) : self_{self} {}
 
         bool await_ready() noexcept {

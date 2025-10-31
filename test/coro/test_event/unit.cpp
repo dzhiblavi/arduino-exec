@@ -1,5 +1,5 @@
-#include "exec/coro/Async.h"
-
+#include <exec/coro/Async.h>
+#include <exec/coro/ManualTask.h>
 #include <exec/coro/sync/Event.h>
 
 #include <utest/utest.h>
@@ -20,12 +20,12 @@ TEST_F(t_event, isSet) {
 }
 
 TEST_F(t_event, fire_once) {
-    auto coro = [&]() -> Async<> {
+    auto coro = makeManualTask([&]() -> Async<> {
         TEST_ASSERT_EQUAL(ErrCode::Success, co_await m.wait());
         TEST_ASSERT_EQUAL(ErrCode::Success, co_await m.wait());
-    }();
+    }());
 
-    coro.resume();
+    coro.start();
     TEST_ASSERT_FALSE(coro.done());  // blocked
     m.fireOnce();
     TEST_ASSERT_FALSE(coro.done());  // blocked
@@ -34,25 +34,25 @@ TEST_F(t_event, fire_once) {
 }
 
 TEST_F(t_event, set) {
-    auto coro = [&]() -> Async<> {
+    auto coro = makeManualTask([&]() -> Async<> {
         TEST_ASSERT_EQUAL(ErrCode::Success, co_await m.wait());
         TEST_ASSERT_EQUAL(ErrCode::Success, co_await m.wait());
-    }();
+    }());
 
-    coro.resume();
+    coro.start();
     TEST_ASSERT_FALSE(coro.done());  // blocked
     m.set();
     TEST_ASSERT_TRUE(coro.done());  // unblocked all
 }
 
 TEST_F(t_event, clear) {
-    auto coro = [&]() -> Async<> {
+    auto coro = makeManualTask([&]() -> Async<> {
         TEST_ASSERT_EQUAL(ErrCode::Success, co_await m.wait());
         m.clear();
         TEST_ASSERT_EQUAL(ErrCode::Success, co_await m.wait());
-    }();
+    }());
 
-    coro.resume();
+    coro.start();
     TEST_ASSERT_FALSE(coro.done());  // blocked
     m.fireOnce();
     TEST_ASSERT_FALSE(coro.done());  // blocked
@@ -66,13 +66,13 @@ TEST_F(t_event, wait_queue_set) {
         TEST_ASSERT_EQUAL(ErrCode::Success, co_await m.wait());
     };
 
-    auto c1 = make_coro();
-    auto c2 = make_coro();
-    auto c3 = make_coro();
+    auto c1 = makeManualTask(make_coro());
+    auto c2 = makeManualTask(make_coro());
+    auto c3 = makeManualTask(make_coro());
 
-    c1.resume();
-    c2.resume();
-    c3.resume();
+    c1.start();
+    c2.start();
+    c3.start();
     TEST_ASSERT_FALSE(c1.done());  // blocked
     TEST_ASSERT_FALSE(c2.done());  // blocked
     TEST_ASSERT_FALSE(c3.done());  // blocked
@@ -89,13 +89,13 @@ TEST_F(t_event, wait_queue_fire_once) {
         TEST_ASSERT_EQUAL(ErrCode::Success, co_await m.wait());
     };
 
-    auto c1 = make_coro();
-    auto c2 = make_coro();
-    auto c3 = make_coro();
+    auto c1 = makeManualTask(make_coro());
+    auto c2 = makeManualTask(make_coro());
+    auto c3 = makeManualTask(make_coro());
 
-    c1.resume();
-    c2.resume();
-    c3.resume();
+    c1.start();
+    c2.start();
+    c3.start();
     TEST_ASSERT_FALSE(c1.done());  // blocked
     TEST_ASSERT_FALSE(c2.done());  // blocked
     TEST_ASSERT_FALSE(c3.done());  // blocked
@@ -121,11 +121,11 @@ TEST_F(t_event, connects_cancellation) {
 TEST_F(t_event, cancelled) {
     CancellationSignal sig;
 
-    auto coro = [&]() -> Async<> {  //
+    auto coro = makeManualTask([&]() -> Async<> {  //
         TEST_ASSERT_EQUAL(ErrCode::Cancelled, co_await m.wait().setCancellationSlot(sig.slot()));
-    }();
+    }());
 
-    coro.resume();
+    coro.start();
     TEST_ASSERT_FALSE(coro.done());  // blocked on lock()
     TEST_ASSERT_EQUAL(noop, sig.emitRaw());
     TEST_ASSERT_TRUE(coro.done());  // released
@@ -142,13 +142,13 @@ TEST_F(t_event, wait_queue_cancelled) {
         TEST_ASSERT_EQUAL(ErrCode::Success, co_await m.wait());
     };
 
-    auto c1 = make_coro();
-    auto c2 = make_coro_cancellable();
-    auto c3 = make_coro();
+    auto c1 = makeManualTask(make_coro());
+    auto c2 = makeManualTask(make_coro_cancellable());
+    auto c3 = makeManualTask(make_coro());
 
-    c1.resume();
-    c2.resume();
-    c3.resume();
+    c1.start();
+    c2.start();
+    c3.start();
     TEST_ASSERT_FALSE(c1.done());  // blocked
     TEST_ASSERT_FALSE(c2.done());  // blocked
     TEST_ASSERT_FALSE(c3.done());  // blocked

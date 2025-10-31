@@ -11,7 +11,7 @@
 namespace exec {
 
 class Event : supp::Pinned {
-    struct Parked : CancellationHandler, supp::IntrusiveListNode, supp::Pinned {
+    struct [[nodiscard]] Parked : CancellationHandler, supp::IntrusiveListNode, supp::Pinned {
         explicit Parked(Event* self) : self_{self} {}
 
         bool await_ready() noexcept {

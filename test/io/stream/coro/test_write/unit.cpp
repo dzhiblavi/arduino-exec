@@ -2,6 +2,7 @@
 #include "io/stream/TestPrint.h"
 
 #include <exec/coro/Async.h>
+#include <exec/coro/ManualTask.h>
 #include <exec/coro/par/any.h>
 #include <exec/coro/wait.h>
 #include <exec/executor/Executor.h>
@@ -45,27 +46,27 @@ struct t_write {
 };
 
 TEST_F(t_write, test_nonblocking) {
-    auto coro = [&]() -> Async<> {
+    auto coro = makeManualTask([&]() -> Async<> {
         const char* buf = "abacabax";
         size_t w = co_await write(&print, buf, 8);
         TEST_ASSERT_EQUAL(8, w);
-    }();
+    }());
 
     fill(2);
-    coro.resume();
+    coro.start();
     TEST_ASSERT_TRUE(coro.done());
     check("xxabacabax");
 }
 
 TEST_F(t_write, test_blocking) {
-    auto coro = [&]() -> Async<> {
+    auto coro = makeManualTask([&]() -> Async<> {
         const char* buf = "abacabax";
         size_t w = co_await write(&print, buf, 8);
         TEST_ASSERT_EQUAL(8, w);
-    }();
+    }());
 
     fill(8);
-    coro.resume();  // ab
+    coro.start();  // ab
     TEST_ASSERT_FALSE(coro.done());
     TEST_ASSERT_EQUAL(1, executor.queued.size());
 
@@ -93,15 +94,15 @@ TEST_F(t_write, test_connects_cancellation) {
 TEST_F(t_write, test_cancelled) {
     CancellationSignal sig;
 
-    auto coro = [this](CancellationSlot slot) -> Async<> {
+    auto coro = makeManualTask([this](CancellationSlot slot) -> Async<> {
         auto buf = "abcd";
         size_t x = co_await write(&print, buf, 4).setCancellationSlot(slot);
         TEST_ASSERT_EQUAL(2, x);
-    }(sig.slot());
+    }(sig.slot()));
 
     fill(8);
 
-    coro.resume();  // block on write()
+    coro.start();  // block on write()
     TEST_ASSERT_FALSE(coro.done());
     TEST_ASSERT_TRUE(sig.hasHandler());
     TEST_ASSERT_EQUAL(1, executor.queued.size());
@@ -121,15 +122,15 @@ TEST_F(t_write, test_cancelled) {
 }
 
 TEST_F(t_write, test_with_timeout_expired) {
-    auto coro = [&]() -> Async<> {
+    auto coro = makeManualTask([&]() -> Async<> {
         auto buf = "abcd";
         auto [rc, ec] = co_await any(write(&print, buf, 4), wait(ttime::Duration(10)));
         TEST_ASSERT_EQUAL(3, rc);
         TEST_ASSERT_EQUAL(ErrCode::Success, ec);
-    }();
+    }());
 
     fill(8);
-    coro.resume();
+    coro.start();
     TEST_ASSERT_EQUAL(1, executor.queued.size());
     TEST_ASSERT_EQUAL(10, timerservice.wakeAt().micros());
 
@@ -148,15 +149,15 @@ TEST_F(t_write, test_with_timeout_expired) {
 }
 
 TEST_F(t_write, test_with_timeout_succeeded) {
-    auto coro = [&]() -> Async<> {
+    auto coro = makeManualTask([&]() -> Async<> {
         auto buf = "abcd";
         auto [rc, ec] = co_await any(write(&print, buf, 4), wait(ttime::Duration(10)));
         TEST_ASSERT_EQUAL(4, rc);
         TEST_ASSERT_EQUAL(ErrCode::Cancelled, ec);
-    }();
+    }());
 
     fill(8);
-    coro.resume();
+    coro.start();
     TEST_ASSERT_EQUAL(1, executor.queued.size());
     TEST_ASSERT_EQUAL(10, timerservice.wakeAt().micros());
 

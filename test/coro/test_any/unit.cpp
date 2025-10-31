@@ -1,4 +1,5 @@
 #include <exec/coro/Async.h>
+#include <exec/coro/ManualTask.h>
 #include <exec/coro/par/any.h>
 #include <exec/coro/sync/Event.h>
 
@@ -11,26 +12,26 @@ TEST(wait_no_blocking) {
     e1.set();
     e2.set();
 
-    auto coro = [&]() -> Async<> {  //
+    auto coro = makeManualTask([&]() -> Async<> {  //
         auto [c1, c2] = co_await any(e1.wait(), e2.wait());
         TEST_ASSERT_EQUAL(ErrCode::Success, c1);
         TEST_ASSERT_EQUAL(ErrCode::Success, c2);
-    }();
+    }());
 
-    coro.resume();
+    coro.start();
     TEST_ASSERT_TRUE(coro.done());
 }
 
 TEST(wait_any_blocked) {
     Event e1, e2;
 
-    auto coro = [&]() -> Async<> {  //
+    auto coro = makeManualTask([&]() -> Async<> {  //
         auto [c1, c2] = co_await any(e1.wait(), e2.wait());
         TEST_ASSERT_EQUAL(ErrCode::Success, c1);
         TEST_ASSERT_EQUAL(ErrCode::Cancelled, c2);
-    }();
+    }());
 
-    coro.resume();
+    coro.start();
     TEST_ASSERT_FALSE(coro.done());
 
     e1.fireOnce();
@@ -49,13 +50,13 @@ TEST(cancel_none_completed) {
     CancellationSignal sig;
     Event e1, e2;
 
-    auto coro = [&]() -> Async<> {
+    auto coro = makeManualTask([&]() -> Async<> {
         auto [c1, c2] = co_await any(e1.wait(), e2.wait()).setCancellationSlot(sig.slot());
         TEST_ASSERT_EQUAL(ErrCode::Cancelled, c1);
         TEST_ASSERT_EQUAL(ErrCode::Cancelled, c2);
-    }();
+    }());
 
-    coro.resume();
+    coro.start();
     TEST_ASSERT_FALSE(coro.done());
     TEST_ASSERT_EQUAL(noop, sig.emitRaw());
     TEST_ASSERT_TRUE(coro.done());
@@ -67,13 +68,13 @@ TEST(cancel_partially_completed) {
     auto* set = GENERATE(&e1, &e2);
     set->set();
 
-    auto coro = [&]() -> Async<> {
+    auto coro = makeManualTask([&]() -> Async<> {
         auto [c1, c2] = co_await any(e1.wait(), e2.wait()).setCancellationSlot(sig.slot());
         TEST_ASSERT_EQUAL(set == &e1 ? ErrCode::Success : ErrCode::Cancelled, c1);
         TEST_ASSERT_EQUAL(set == &e2 ? ErrCode::Success : ErrCode::Cancelled, c2);
-    }();
+    }());
 
-    coro.resume();
+    coro.start();
     TEST_ASSERT_TRUE(coro.done());
     TEST_ASSERT_EQUAL(noop, sig.emitRaw());
 }
@@ -84,13 +85,13 @@ TEST(cancel_both_completed) {
     e1.set();
     e2.set();
 
-    auto coro = [&]() -> Async<> {
+    auto coro = makeManualTask([&]() -> Async<> {
         auto [c1, c2] = co_await any(e1.wait(), e2.wait()).setCancellationSlot(sig.slot());
         TEST_ASSERT_EQUAL(ErrCode::Success, c1);
         TEST_ASSERT_EQUAL(ErrCode::Success, c2);
-    }();
+    }());
 
-    coro.resume();
+    coro.start();
     TEST_ASSERT_TRUE(coro.done());
     TEST_ASSERT_EQUAL(noop, sig.emitRaw());
 }
@@ -99,7 +100,7 @@ TEST(combine_any_with_any_inner_cancelled) {
     CancellationSignal sig;
     Event e1, e2, e3;
 
-    auto coro = [&]() -> Async<> {
+    auto coro = makeManualTask([&]() -> Async<> {
         auto [c1, c2, a] = co_await any(
             e1.wait(), e2.wait(), any(e2.wait(), e3.wait()).setCancellationSlot(sig.slot()));
         TEST_ASSERT_EQUAL(ErrCode::Cancelled, c1);
@@ -107,9 +108,9 @@ TEST(combine_any_with_any_inner_cancelled) {
         auto&& [c3, c4] = a;
         TEST_ASSERT_EQUAL(ErrCode::Cancelled, c3);
         TEST_ASSERT_EQUAL(ErrCode::Cancelled, c4);
-    }();
+    }());
 
-    coro.resume();
+    coro.start();
     TEST_ASSERT_FALSE(coro.done());
 
     sig.emit();
@@ -120,7 +121,7 @@ TEST(combine_any_with_any_outer_cancelled) {
     CancellationSignal sig;
     Event e1, e2, e3;
 
-    auto coro = [&]() -> Async<> {
+    auto coro = makeManualTask([&]() -> Async<> {
         auto [c1, c2, a] = co_await any(e1.wait(), e2.wait(), any(e2.wait(), e3.wait()))
                                .setCancellationSlot(sig.slot());
         TEST_ASSERT_EQUAL(ErrCode::Cancelled, c1);
@@ -128,9 +129,9 @@ TEST(combine_any_with_any_outer_cancelled) {
         auto&& [c3, c4] = a;
         TEST_ASSERT_EQUAL(ErrCode::Cancelled, c3);
         TEST_ASSERT_EQUAL(ErrCode::Cancelled, c4);
-    }();
+    }());
 
-    coro.resume();
+    coro.start();
     TEST_ASSERT_FALSE(coro.done());
 
     sig.emit();

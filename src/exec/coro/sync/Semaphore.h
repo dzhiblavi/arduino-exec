@@ -41,6 +41,7 @@ class Semaphore : supp::Pinned {
 
         // CancellationHandler
         Runnable* cancel() override {
+            LINFO("cancleledd");
             slot_.clearIfConnected();
             unlink();
             self_ = nullptr;

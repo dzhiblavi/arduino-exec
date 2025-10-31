@@ -1,4 +1,5 @@
 #include <exec/coro/Async.h>
+#include <exec/coro/ManualTask.h>
 #include <exec/coro/par/all.h>
 #include <exec/coro/sync/Event.h>
 
@@ -11,26 +12,26 @@ TEST(wait_no_blocking) {
     e1.set();
     e2.set();
 
-    auto coro = [&]() -> Async<> {  //
+    auto coro = makeManualTask([&]() -> Async<> {  //
         auto [c1, c2] = co_await all(e1.wait(), e2.wait());
         TEST_ASSERT_EQUAL(c1, ErrCode::Success);
         TEST_ASSERT_EQUAL(c2, ErrCode::Success);
-    }();
+    }());
 
-    coro.resume();
+    coro.start();
     TEST_ASSERT_TRUE(coro.done());
 }
 
 TEST(wait_all_blocked) {
     Event e1, e2;
 
-    auto coro = [&]() -> Async<> {  //
+    auto coro = makeManualTask([&]() -> Async<> {  //
         auto [c1, c2] = co_await all(e1.wait(), e2.wait());
         TEST_ASSERT_EQUAL(c1, ErrCode::Success);
         TEST_ASSERT_EQUAL(c2, ErrCode::Success);
-    }();
+    }());
 
-    coro.resume();
+    coro.start();
     TEST_ASSERT_FALSE(coro.done());
 
     SECTION("forward order") {
@@ -54,13 +55,13 @@ TEST(wait_one_blocked) {
     Event e1, e2;
     e2.set();
 
-    auto coro = [&]() -> Async<> {  //
+    auto coro = makeManualTask([&]() -> Async<> {  //
         auto [c1, c2] = co_await all(e1.wait(), e2.wait());
         TEST_ASSERT_EQUAL(c1, ErrCode::Success);
         TEST_ASSERT_EQUAL(c2, ErrCode::Success);
-    }();
+    }());
 
-    coro.resume();
+    coro.start();
     TEST_ASSERT_FALSE(coro.done());
 
     e1.fireOnce();
@@ -79,13 +80,13 @@ TEST(cancel_none_completed) {
     CancellationSignal sig;
     Event e1, e2;
 
-    auto coro = [&]() -> Async<> {
+    auto coro = makeManualTask([&]() -> Async<> {
         auto [c1, c2] = co_await all(e1.wait(), e2.wait()).setCancellationSlot(sig.slot());
         TEST_ASSERT_EQUAL(c1, ErrCode::Cancelled);
         TEST_ASSERT_EQUAL(c2, ErrCode::Cancelled);
-    }();
+    }());
 
-    coro.resume();
+    coro.start();
     TEST_ASSERT_FALSE(coro.done());
     TEST_ASSERT_EQUAL(noop, sig.emitRaw());
     TEST_ASSERT_TRUE(coro.done());
@@ -97,13 +98,13 @@ TEST(cancel_partially_completed) {
     auto* set = GENERATE(&e1, &e2);
     set->set();
 
-    auto coro = [&]() -> Async<> {
+    auto coro = makeManualTask([&]() -> Async<> {
         auto [c1, c2] = co_await all(e1.wait(), e2.wait()).setCancellationSlot(sig.slot());
         TEST_ASSERT_EQUAL(c1, set == &e1 ? ErrCode::Success : ErrCode::Cancelled);
         TEST_ASSERT_EQUAL(c2, set == &e2 ? ErrCode::Success : ErrCode::Cancelled);
-    }();
+    }());
 
-    coro.resume();
+    coro.start();
     TEST_ASSERT_FALSE(coro.done());
     TEST_ASSERT_EQUAL(noop, sig.emitRaw());
     TEST_ASSERT_TRUE(coro.done());
@@ -115,13 +116,13 @@ TEST(cancel_both_completed) {
     e1.set();
     e2.set();
 
-    auto coro = [&]() -> Async<> {
+    auto coro = makeManualTask([&]() -> Async<> {
         auto [c1, c2] = co_await all(e1.wait(), e2.wait()).setCancellationSlot(sig.slot());
         TEST_ASSERT_EQUAL(c1, ErrCode::Success);
         TEST_ASSERT_EQUAL(c2, ErrCode::Success);
-    }();
+    }());
 
-    coro.resume();
+    coro.start();
     TEST_ASSERT_TRUE(coro.done());
     TEST_ASSERT_EQUAL(noop, sig.emitRaw());
 }
@@ -129,16 +130,16 @@ TEST(cancel_both_completed) {
 TEST(combine_all_with_all) {
     Event e1, e2, e3;
 
-    auto coro = [&]() -> Async<> {
+    auto coro = makeManualTask([&]() -> Async<> {
         auto [c1, c2, a] = co_await all(e1.wait(), e2.wait(), all(e2.wait(), e3.wait()));
         TEST_ASSERT_EQUAL(c1, ErrCode::Success);
         TEST_ASSERT_EQUAL(c2, ErrCode::Success);
         auto&& [c3, c4] = a;
         TEST_ASSERT_EQUAL(c3, ErrCode::Success);
         TEST_ASSERT_EQUAL(c4, ErrCode::Success);
-    }();
+    }());
 
-    coro.resume();
+    coro.start();
     TEST_ASSERT_FALSE(coro.done());
     e2.fireOnce();
     TEST_ASSERT_FALSE(coro.done());
@@ -152,7 +153,7 @@ TEST(combine_all_with_all_inner_cancelled) {
     CancellationSignal sig;
     Event e1, e2, e3;
 
-    auto coro = [&]() -> Async<> {
+    auto coro = makeManualTask([&]() -> Async<> {
         auto [c1, c2, a] = co_await all(
             e1.wait(), e2.wait(), all(e2.wait(), e3.wait()).setCancellationSlot(sig.slot()));
         TEST_ASSERT_EQUAL(c1, ErrCode::Success);
@@ -160,9 +161,9 @@ TEST(combine_all_with_all_inner_cancelled) {
         auto&& [c3, c4] = a;
         TEST_ASSERT_EQUAL(c3, ErrCode::Cancelled);
         TEST_ASSERT_EQUAL(c4, ErrCode::Cancelled);
-    }();
+    }());
 
-    coro.resume();
+    coro.start();
     TEST_ASSERT_FALSE(coro.done());
 
     sig.emit();
@@ -179,7 +180,7 @@ TEST(combine_all_with_all_outer_cancelled) {
     CancellationSignal sig;
     Event e1, e2, e3;
 
-    auto coro = [&]() -> Async<> {
+    auto coro = makeManualTask([&]() -> Async<> {
         auto [c1, c2, a] = co_await all(e1.wait(), e2.wait(), all(e2.wait(), e3.wait()))
                                .setCancellationSlot(sig.slot());
         TEST_ASSERT_EQUAL(c1, ErrCode::Cancelled);
@@ -187,9 +188,9 @@ TEST(combine_all_with_all_outer_cancelled) {
         auto&& [c3, c4] = a;
         TEST_ASSERT_EQUAL(c3, ErrCode::Success);
         TEST_ASSERT_EQUAL(c4, ErrCode::Success);
-    }();
+    }());
 
-    coro.resume();
+    coro.start();
     TEST_ASSERT_FALSE(coro.done());
 
     e2.fireOnce();
