@@ -122,7 +122,6 @@ template <typename T>
 class AsyncPromise : public AsyncPromiseBase {
  public:
     AsyncPromise() noexcept = default;
-    ~AsyncPromise() = default;
 
     auto get_return_object() noexcept {  // NOLINT
         return std::coroutine_handle<AsyncPromise>::from_promise(*this);
@@ -145,7 +144,6 @@ template <>
 class AsyncPromise<Unit> : public AsyncPromiseBase {
  public:
     AsyncPromise() noexcept = default;
-    ~AsyncPromise() = default;
 
     auto get_return_object() noexcept {
         return std::coroutine_handle<AsyncPromise>::from_promise(*this);
