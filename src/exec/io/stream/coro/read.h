@@ -5,8 +5,6 @@
 #include "exec/io/stream/Stream.h"
 #include "exec/os/Service.h"
 
-#include <logging/log.h>
-
 #include <coroutine>
 
 namespace exec {

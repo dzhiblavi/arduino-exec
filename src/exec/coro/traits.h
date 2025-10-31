@@ -41,8 +41,8 @@ template <class T>
 using awaitable_result_t = typename awaitable_result<T>::type;
 
 template <typename Awaitable>
-concept CancellableAwaitable = requires(Awaitable& a, CancellationSlot slot) {
-    { a.setCancellationSlot(slot) };
+concept CancellableAwaitable = requires(Awaitable a, CancellationSlot slot) {
+    { std::move(a).setCancellationSlot(slot) };
 };
 
 }  // namespace exec

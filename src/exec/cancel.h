@@ -18,6 +18,14 @@ class CancellationSlot {
  public:
     CancellationSlot() = default;
 
+    // copyable
+    CancellationSlot(const CancellationSlot&) = default;
+    CancellationSlot& operator=(const CancellationSlot&) = default;
+
+    // movable
+    CancellationSlot(CancellationSlot&& r) noexcept
+        : handler_{std::exchange(r.handler_, nullptr)} {}
+
     bool isConnected() const {
         return handler_ != nullptr;
     }

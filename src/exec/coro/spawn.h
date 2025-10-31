@@ -35,7 +35,7 @@ struct SpawnPromise {
             }
 
             void await_suspend(coroutine_handle_t coroutine) noexcept {
-                LTRACE("deallocating SpawnTask");
+                LTRACE(F("deallocating SpawnTask"));
                 delete coroutine.promise().owner_;
             }
 
@@ -99,7 +99,7 @@ SpawnTask<T> spawn(Async<T> task) noexcept {
 
 template <typename T>
 void launch(SpawnTask<T> task) {
-    LTRACE("allocating SpawnTask");
+    LTRACE(F("allocating SpawnTask"));
     auto spawn_task_heap = new detail::SpawnTask<T>(std::move(task));
     service<Executor>()->post(spawn_task_heap);
 }

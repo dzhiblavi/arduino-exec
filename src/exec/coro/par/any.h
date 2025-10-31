@@ -78,7 +78,7 @@ struct AnyState : CancellationHandler, supp::Pinned {
 template <typename T, size_t Index, typename State>
 struct AnyTask : supp::Pinned {
     struct promise_type {
-        promise_type(auto& /*task*/, State* state) : state{state} {}
+        promise_type(auto&& /*task*/, State* state) : state{state} {}
 
         auto get_return_object() noexcept {
             return AnyTask{std::coroutine_handle<promise_type>::from_promise(*this)};
@@ -144,7 +144,7 @@ AnyTask<awaitable_result_t<Task>, I, State> makeAnyTask(Task&& task, State* /*st
 }
 
 template <size_t I, typename State, typename Task>
-void attachCancellation(State* state, Task& task) {
+void attachAnyTaskCancellation(State* state, Task& task) {
     if constexpr (CancellableAwaitable<Task>) {
         task.setCancellationSlot(state->template getSlot<I>());
     }
@@ -154,7 +154,7 @@ template <typename State, typename... Tasks>
 auto makeAnyTasksTuple(State* state, Tasks&&... tasks) {
     return [&]<size_t... Is>(std::index_sequence<Is...>) {
         // Install the cancellation slot before task.start() is called
-        (attachCancellation<Is>(state, tasks), ...);
+        (attachAnyTaskCancellation<Is>(state, tasks), ...);
 
         return std::tuple<AnyTask<awaitable_result_t<Tasks>, Is, State>...>(
             makeAnyTask<Is>(std::forward<Tasks>(tasks), state)...);

@@ -1,6 +1,8 @@
 #pragma once
 
 #include "exec/Unit.h"
+#include "exec/cancel.h"
+#include "exec/coro/traits.h"
 
 #include <supp/ManualLifetime.h>
 #include <supp/verify.h>
@@ -13,6 +15,13 @@ namespace exec {
 
 template <typename T>
 class Async;
+
+inline constexpr struct extract_cancellation_slot_t {
+} extract_cancellation_slot{};
+
+struct replace_cancellation_slot {
+    CancellationSlot slot;
+};
 
 namespace detail {
 
@@ -28,6 +37,20 @@ class AsyncPromiseBase {
         }
 
         void await_resume() noexcept {}
+    };
+
+    struct ExtractCancellationSlotAwaitable {
+        constexpr bool await_ready() const {
+            return true;
+        }
+
+        constexpr void await_suspend(std::coroutine_handle<>) const {}
+
+        CancellationSlot await_resume() const {
+            return slot;
+        }
+
+        CancellationSlot slot;
     };
 
  public:
@@ -46,22 +69,53 @@ class AsyncPromiseBase {
         abort();
     }
 
+    template <CancellableAwaitable A>
+    decltype(auto) await_transform(A&& awaitable) {
+        if (slot_.isConnected()) {
+            // Connect cancellation when awaiting cancellable awaitables
+            awaitable.setCancellationSlot(slot_);
+        }
+
+        return std::forward<A>(awaitable);
+    }
+
+    template <typename A>
+    decltype(auto) await_transform(A&& awaitable) {
+        return std::forward<A>(awaitable);
+    }
+
+    auto await_transform(extract_cancellation_slot_t) {
+        return ExtractCancellationSlotAwaitable{std::move(slot_)};
+    }
+
+    auto await_transform(replace_cancellation_slot r) {
+        auto extracted = std::move(slot_);
+        slot_ = std::move(r.slot);
+        return ExtractCancellationSlotAwaitable{std::move(extracted)};
+    }
+
     void setContinuation(std::coroutine_handle<> continuation) noexcept {
         continuation_ = continuation;
     }
 
+    // CancellableAwaitable
+    void setCancellationSlot(CancellationSlot slot) noexcept {
+        slot_ = slot;
+    }
+
     void* operator new(size_t size) {
-        LTRACE("allocating ", size, " bytes for coroutine state");
+        LTRACE(F("allocating for coroutine state: "), size);
         return ::operator new(size);
     }
 
     void operator delete(void* ptr, size_t size) {
-        LTRACE("deallocating ", size, " bytes from coroutine state");
+        LTRACE(F("allocating from coroutine state: "), size);
         ::operator delete(ptr, size);
     }
 
  private:
     std::coroutine_handle<> continuation_ = std::noop_coroutine();
+    CancellationSlot slot_;
 };
 
 template <typename T>
@@ -148,7 +202,19 @@ class [[nodiscard]] Async {
         return coroutine_.done();
     }
 
-    auto operator co_await() && noexcept {
+    // CancellableAwaitable
+    Async& setCancellationSlot(CancellationSlot slot) & noexcept {
+        coroutine_.promise().setCancellationSlot(slot);
+        return *this;
+    }
+
+    // CancellableAwaitable
+    Async setCancellationSlot(CancellationSlot slot) && noexcept {
+        coroutine_.promise().setCancellationSlot(slot);
+        return std::move(*this);
+    }
+
+    auto operator co_await() noexcept {
         struct Awaitable {
             bool await_ready() const noexcept {
                 return !coroutine || coroutine.done();
