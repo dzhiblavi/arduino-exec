@@ -81,9 +81,20 @@ TEST_F(t_read, test_blocking) {
 TEST_F(t_read, test_connects_cancellation) {
     CancellationSignal sig;
     char dst[20];
-    [[maybe_unused]] auto&& op = read(&stream, dst, 4).setCancellationSlot(sig.slot());
 
+    auto coro = makeManualTask([&](CancellationSlot slot) -> Async<> {
+        co_await read(&stream, dst, 4).setCancellationSlot(sig.slot());
+    }(sig.slot()));
+
+    TEST_ASSERT_FALSE(sig.hasHandler());
+    coro.start();
     TEST_ASSERT_TRUE(sig.hasHandler());
+    TEST_ASSERT_FALSE(coro.done());
+
+    push("abcd");
+    executor.queued.popFront()->runAll();
+    TEST_ASSERT_TRUE(coro.done());
+    TEST_ASSERT_FALSE(sig.hasHandler());
 }
 
 TEST_F(t_read, test_cancelled) {

@@ -18,15 +18,11 @@ auto write(Print* print, const char* dst, size_t len) {
             , len_{len} {}
 
         bool await_ready() noexcept {
-            if (!performWrite()) {
-                return false;
-            }
-
-            slot_.clearIfConnected();
-            return true;
+            return performWrite();
         }
 
         void await_suspend(std::coroutine_handle<> caller) noexcept {
+            slot_.installIfConnected(this);
             caller_ = caller;
             service<Executor>()->post(this);
         }
@@ -38,7 +34,6 @@ auto write(Print* print, const char* dst, size_t len) {
         // CancellableAwaitable
         Awaitable& setCancellationSlot(CancellationSlot slot) noexcept {
             slot_ = slot;
-            slot_.installIfConnected(this);
             return *this;
         }
 
@@ -46,6 +41,7 @@ auto write(Print* print, const char* dst, size_t len) {
         // Runnable
         Runnable* run() override {
             if (performWrite()) {
+                slot_.clearIfConnected();
                 caller_.resume();
             } else {
                 // continue polling

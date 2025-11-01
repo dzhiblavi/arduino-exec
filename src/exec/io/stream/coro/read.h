@@ -14,15 +14,11 @@ auto read(Stream* stream, char* dst, size_t len) {
         Awaitable(Stream* stream, char* dst, size_t len) : stream_{stream}, dst_{dst}, len_{len} {}
 
         bool await_ready() noexcept {
-            if (!performRead()) {
-                return false;
-            }
-
-            slot_.clearIfConnected();
-            return true;
+            return performRead();
         }
 
         void await_suspend(std::coroutine_handle<> caller) noexcept {
+            slot_.installIfConnected(this);
             caller_ = caller;
             service<Executor>()->post(this);
         }
@@ -34,7 +30,6 @@ auto read(Stream* stream, char* dst, size_t len) {
         // CancellableAwaitable
         Awaitable& setCancellationSlot(CancellationSlot slot) noexcept {
             slot_ = slot;
-            slot_.installIfConnected(this);
             return *this;
         }
 
@@ -42,6 +37,7 @@ auto read(Stream* stream, char* dst, size_t len) {
         // Runnable
         Runnable* run() override {
             if (performRead()) {
+                slot_.clearIfConnected();
                 caller_.resume();
             } else {
                 // continue polling

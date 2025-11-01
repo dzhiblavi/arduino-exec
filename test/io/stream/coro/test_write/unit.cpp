@@ -86,9 +86,21 @@ TEST_F(t_write, test_blocking) {
 TEST_F(t_write, test_connects_cancellation) {
     CancellationSignal sig;
     auto buf = "abacaba";
-    [[maybe_unused]] auto&& op = write(&print, buf, 4).setCancellationSlot(sig.slot());
 
+    fill(10);
+
+    auto coro = makeManualTask([&](CancellationSlot slot) -> Async<> {
+        co_await write(&print, buf, 4).setCancellationSlot(slot);
+    }(sig.slot()));
+
+    TEST_ASSERT_FALSE(sig.hasHandler());
+    coro.start();
     TEST_ASSERT_TRUE(sig.hasHandler());
+
+    drain(4);
+    executor.queued.popFront()->runAll();
+    TEST_ASSERT_TRUE(coro.done());
+    TEST_ASSERT_FALSE(sig.hasHandler());
 }
 
 TEST_F(t_write, test_cancelled) {
