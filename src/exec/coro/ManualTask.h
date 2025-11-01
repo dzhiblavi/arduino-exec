@@ -78,7 +78,7 @@ class ManualTask {
         return coroutine_.done();
     }
 
-    supp::ManualLifetime<T> result() const {
+    const supp::ManualLifetime<T>& result() const {
         DASSERT(coroutine_);
         return coroutine_.promise().result();
     }
