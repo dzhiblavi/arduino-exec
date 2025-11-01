@@ -101,9 +101,18 @@ TEST_F(t_mutex, lock_queue) {
 
 TEST_F(t_mutex, connects_cancellation) {
     CancellationSignal sig;
-    [[maybe_unused]] auto&& op = m.lock().setCancellationSlot(sig.slot());
 
+    auto coro = makeManualTask([&]() -> Async<> {
+        auto guard = co_await m.lock().setCancellationSlot(sig.slot());
+    }());
+
+    auto guard = m.try_lock();
+
+    coro.start();
     TEST_ASSERT_TRUE(sig.hasHandler());
+
+    std::move(guard).unlock();
+    TEST_ASSERT_TRUE(coro.done());
 }
 
 TEST_F(t_mutex, cancelled) {

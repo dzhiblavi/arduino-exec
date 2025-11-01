@@ -113,9 +113,17 @@ TEST_F(t_event, wait_queue_fire_once) {
 
 TEST_F(t_event, connects_cancellation) {
     CancellationSignal sig;
-    [[maybe_unused]] auto&& op = m.wait().setCancellationSlot(sig.slot());
 
+    auto coro = makeManualTask([&]() -> Async<> {  //
+        co_await m.wait().setCancellationSlot(sig.slot());
+    }());
+
+    coro.start();
     TEST_ASSERT_TRUE(sig.hasHandler());
+
+    m.fireOnce();
+    TEST_ASSERT_TRUE(coro.done());
+    TEST_ASSERT_FALSE(sig.hasHandler());
 }
 
 TEST_F(t_event, cancelled) {

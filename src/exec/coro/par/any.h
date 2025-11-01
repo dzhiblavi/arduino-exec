@@ -48,6 +48,9 @@ struct AnyState : CancellationHandler, supp::Pinned {
 
     void setCancellationSlot(CancellationSlot slot) {
         slot_ = slot;
+    }
+
+    void connectCancellation() {
         slot_.installIfConnected(this);
     }
 
@@ -180,11 +183,12 @@ struct [[nodiscard]] AnyAwaitable : supp::Pinned {
 
         // operation is complete, cancel all other tasks
         state_.cancel();
-        state_.slot_.clearIfConnected();
         return true;
     }
 
     void await_suspend(std::coroutine_handle<> caller) noexcept {
+        state_.connectCancellation();
+
         // All tasks have been started, but none of them completed. Register awaiter.
         state_.all_waiter = caller;
     }

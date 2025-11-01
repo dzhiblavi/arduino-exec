@@ -33,21 +33,32 @@ class [[nodiscard]] LockGuard {
 };
 
 class Mutex : supp::Pinned {
+ public:
+    Mutex() = default;
+
+    LockGuard try_lock() {
+        if (tryLockRaw()) {
+            return LockGuard{this};
+        }
+
+        return LockGuard{nullptr};
+    }
+
+    auto lock() {
+        return Parked{this};
+    }
+
+ private:
     struct [[nodiscard]] Parked : CancellationHandler, supp::IntrusiveListNode, supp::Pinned {
         explicit Parked(Mutex* self) : self_{self} {}
 
         bool await_ready() noexcept {
-            if (!self_->tryLockRaw()) {
-                return false;
-            }
-
-            // operation is complete
-            slot_.clearIfConnected();
-            return true;
+            return self_->tryLockRaw();
         }
 
         // Locked, should park
         void await_suspend(std::coroutine_handle<> caller) {
+            slot_.installIfConnected(this);
             caller_ = caller;
             self_->parked_.pushBack(this);
         }
@@ -59,7 +70,6 @@ class Mutex : supp::Pinned {
         // CancellableAwaitable
         Parked& setCancellationSlot(CancellationSlot slot) noexcept {
             slot_ = slot;
-            slot_.installIfConnected(this);
             return *this;
         }
 
@@ -83,22 +93,6 @@ class Mutex : supp::Pinned {
         CancellationSlot slot_;
     };
 
- public:
-    Mutex() = default;
-
-    LockGuard try_lock() {
-        if (tryLockRaw()) {
-            return LockGuard{this};
-        }
-
-        return LockGuard{nullptr};
-    }
-
-    auto lock() {
-        return Parked{this};
-    }
-
- private:
     bool tryLockRaw() {
         if (locked_) {
             return false;

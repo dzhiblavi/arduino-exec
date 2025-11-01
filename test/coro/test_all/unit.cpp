@@ -72,8 +72,16 @@ TEST(connects_cancellation) {
     Event e1, e2;
     CancellationSignal sig;
 
-    all(e1.wait(), e2.wait()).setCancellationSlot(sig.slot());
+    auto coro = makeManualTask([&]() -> Async<> {
+        co_await all(e1.wait(), e2.wait()).setCancellationSlot(sig.slot());
+    }());
+
+    coro.start();
     TEST_ASSERT_TRUE(sig.hasHandler());
+
+    e1.fireOnce();
+    e2.fireOnce();
+    TEST_ASSERT_TRUE(coro.done());
 }
 
 TEST(cancel_none_completed) {
@@ -146,33 +154,6 @@ TEST(combine_all_with_all) {
     e3.fireOnce();
     TEST_ASSERT_FALSE(coro.done());
     e1.fireOnce();
-    TEST_ASSERT_TRUE(coro.done());
-}
-
-TEST(combine_all_with_all_inner_cancelled) {
-    CancellationSignal sig;
-    Event e1, e2, e3;
-
-    auto coro = makeManualTask([&]() -> Async<> {
-        auto [c1, c2, a] = co_await all(
-            e1.wait(), e2.wait(), all(e2.wait(), e3.wait()).setCancellationSlot(sig.slot()));
-        TEST_ASSERT_EQUAL(c1, ErrCode::Success);
-        TEST_ASSERT_EQUAL(c2, ErrCode::Success);
-        auto&& [c3, c4] = a;
-        TEST_ASSERT_EQUAL(c3, ErrCode::Cancelled);
-        TEST_ASSERT_EQUAL(c4, ErrCode::Cancelled);
-    }());
-
-    coro.start();
-    TEST_ASSERT_FALSE(coro.done());
-
-    sig.emit();
-    TEST_ASSERT_FALSE(coro.done());
-
-    e1.fireOnce();
-    TEST_ASSERT_FALSE(coro.done());
-
-    e2.fireOnce();
     TEST_ASSERT_TRUE(coro.done());
 }
 

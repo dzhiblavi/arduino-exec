@@ -81,9 +81,19 @@ TEST_F(t_semaphore, acquire_queue) {
 
 TEST_F(t_semaphore, connects_cancellation) {
     CancellationSignal sig;
-    [[maybe_unused]] auto&& op = m.acquire().setCancellationSlot(sig.slot());
 
+    auto coro = makeManualTask([&]() -> Async<> {  //
+        co_await m.acquire().setCancellationSlot(sig.slot());
+    }());
+
+    m.tryAcquire();
+    m.tryAcquire();
+
+    coro.start();
     TEST_ASSERT_TRUE(sig.hasHandler());
+
+    m.release();
+    TEST_ASSERT_TRUE(coro.done());
 }
 
 TEST_F(t_semaphore, cancelled) {
