@@ -5,6 +5,7 @@
 #include "exec/coro/traits.h"
 
 #include <supp/ManualLifetime.h>
+#include <supp/NonCopyable.h>
 #include <supp/verify.h>
 
 #include <coroutine>
@@ -106,12 +107,10 @@ class AsyncPromiseBase {
     }
 
     void* operator new(size_t size) {
-        LTRACE(F("allocating coroutine state: "), size);
         return ::operator new(size);
     }
 
     void operator delete(void* ptr, size_t size) {
-        LTRACE(F("deallocating coroutine state: "), size);
         ::operator delete(ptr, size);
     }
 
@@ -168,7 +167,7 @@ class AsyncPromise<Unit> : public AsyncPromiseBase {
 }  // namespace detail
 
 template <typename T = Unit>
-class [[nodiscard]] Async {
+class [[nodiscard]] Async : supp::NonCopyable {
  public:
     using promise_type = detail::AsyncPromise<T>;
     using value_type = T;
@@ -176,10 +175,6 @@ class [[nodiscard]] Async {
     Async() noexcept = default;
     Async(std::coroutine_handle<promise_type> coroutine) : coroutine_(coroutine) {}
     Async(Async&& t) noexcept : coroutine_(std::exchange(t.coroutine_, nullptr)) {}
-
-    // not copyable
-    Async(const Async&) = delete;
-    Async& operator=(const Async&) = delete;
 
     ~Async() noexcept {
         DASSERT(!coroutine_, F("Async<T> has not been consumed"));
@@ -200,7 +195,10 @@ class [[nodiscard]] Async {
     }
 
     auto operator co_await() noexcept {
-        struct Awaitable {
+        struct Awaitable : supp::Pinned {
+            Awaitable(std::coroutine_handle<promise_type> coroutine)
+                : coroutine_{std::move(coroutine)} {}
+
             bool await_ready() const noexcept {
                 return coroutine_.done();
             }
@@ -227,7 +225,7 @@ class [[nodiscard]] Async {
     }
 
  private:
-    std::coroutine_handle<promise_type> coroutine_;
+    std::coroutine_handle<promise_type> coroutine_ = nullptr;
 };
 
 }  // namespace exec

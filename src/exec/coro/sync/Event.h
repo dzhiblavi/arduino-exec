@@ -4,6 +4,7 @@
 #include "exec/cancel.h"
 
 #include <supp/IntrusiveList.h>
+#include <supp/NonCopyable.h>
 #include <supp/Pinned.h>
 
 #include <coroutine>
@@ -19,7 +20,7 @@ class Event : supp::Pinned {
     }
 
     auto wait() {
-        return Parked{this};
+        return Wait{this};
     }
 
     void set() {
@@ -36,8 +37,9 @@ class Event : supp::Pinned {
     }
 
  private:
-    struct [[nodiscard]] Parked : CancellationHandler, supp::IntrusiveListNode, supp::Pinned {
-        explicit Parked(Event* self) : self_{self} {}
+    struct Awaitable : CancellationHandler, supp::IntrusiveListNode {
+     public:
+        Awaitable(Event* self, CancellationSlot slot) : self_{self}, slot_{slot} {}
 
         bool await_ready() noexcept {
             return self_->fired_;
@@ -52,12 +54,6 @@ class Event : supp::Pinned {
 
         ErrCode await_resume() const noexcept {
             return self_ == nullptr ? ErrCode::Cancelled : ErrCode::Success;
-        }
-
-        // CancellableAwaitable
-        Parked& setCancellationSlot(CancellationSlot slot) noexcept {
-            slot_ = slot;
-            return *this;
         }
 
         // CancellationHandler
@@ -76,7 +72,25 @@ class Event : supp::Pinned {
 
      private:
         Event* self_;
-        std::coroutine_handle<> caller_;
+        CancellationSlot slot_;
+        std::coroutine_handle<> caller_ = nullptr;
+    };
+
+    struct [[nodiscard]] Wait : supp::NonCopyable {
+        Wait(Event* self) : self_{self} {}
+
+        // CancellableAwaitable
+        Wait& setCancellationSlot(CancellationSlot slot) noexcept {
+            slot_ = slot;
+            return *this;
+        }
+
+        auto operator co_await() noexcept {
+            return Awaitable{self_, slot_};
+        }
+
+     private:
+        Event* self_;
         CancellationSlot slot_;
     };
 
@@ -88,7 +102,7 @@ class Event : supp::Pinned {
         }
     }
 
-    supp::IntrusiveList<Parked> parked_;
+    supp::IntrusiveList<Awaitable> parked_;
     bool fired_ = false;
 };
 

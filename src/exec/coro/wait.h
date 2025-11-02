@@ -4,8 +4,9 @@
 #include "exec/cancel.h"
 #include "exec/os/TimerService.h"
 
+#include <supp/NonCopyable.h>
+
 #include <logging/log.h>
-#include <supp/Pinned.h>
 #include <time/mono.h>
 
 #include <coroutine>
@@ -14,20 +15,16 @@ namespace exec {
 
 // Cancellable delay
 auto wait(ttime::Duration d) {
-    struct [[nodiscard]] Awaitable : Runnable, CancellationHandler, supp::Pinned {
-        Awaitable(ttime::Duration d) noexcept : d{d} {}
+    struct [[nodiscard]] Awaitable : Runnable, CancellationHandler, supp::NonCopyable {
+        Awaitable(ttime::Duration d, CancellationSlot slot) noexcept : d{d}, slot_{slot} {}
 
         bool await_ready() noexcept {
-            if (d.micros() > 0) {
-                return false;
-            }
-
-            slot_.clearIfConnected();
-            return true;
+            return d.micros() == 0;
         }
 
-        void await_suspend(std::coroutine_handle<> awaiter) noexcept {
-            this->awaiter = awaiter;
+        void await_suspend(std::coroutine_handle<> an_awaiter) noexcept {
+            slot_.installIfConnected(this);
+            awaiter_ = an_awaiter;
             entry_.at = ttime::mono::now() + d;
             entry_.task = this;
             service<TimerService>()->add(&entry_);
@@ -43,7 +40,7 @@ auto wait(ttime::Duration d) {
             DASSERT(code_ == ErrCode::Unknown);
             slot_.clearIfConnected();
             code_ = ErrCode::Success;
-            awaiter.resume();
+            awaiter_.resume();
             return noop;
         }
 
@@ -57,25 +54,33 @@ auto wait(ttime::Duration d) {
             }
 
             code_ = ErrCode::Cancelled;
-            awaiter.resume();
+            awaiter_.resume();
             return noop;
         }
 
+        const ttime::Duration d;
+        CancellationSlot slot_;
+        ErrCode code_ = ErrCode::Unknown;
+        std::coroutine_handle<> awaiter_;
+        TimerEntry entry_;
+    };
+
+    struct Op {
         // CancellableAwaitable
-        Awaitable& setCancellationSlot(CancellationSlot slot) noexcept {
-            slot_ = slot;
-            slot_.installIfConnected(this);
+        Op& setCancellationSlot(CancellationSlot slot) noexcept {
+            this->slot = slot;
             return *this;
         }
 
-        ErrCode code_ = ErrCode::Unknown;
-        CancellationSlot slot_;
-        std::coroutine_handle<> awaiter;
-        TimerEntry entry_;
+        auto operator co_await() noexcept {
+            return Awaitable{d, slot};
+        }
+
         const ttime::Duration d;
+        CancellationSlot slot{};
     };
 
-    return Awaitable{d};
+    return Op{d};
 }
 
 }  // namespace exec

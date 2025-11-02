@@ -4,6 +4,7 @@
 #include "exec/coro/traits.h"
 
 #include <supp/ManualLifetime.h>
+#include <supp/NonCopyable.h>
 #include <supp/tuple.h>
 
 #include <array>
@@ -21,7 +22,9 @@ namespace detail {
 // CancellableAwaitable
 // Cancels all child tasks when the first one completes, then waits for all of them to complete.
 template <typename... Ts>
-struct AnyState : CancellationHandler, supp::Pinned {
+struct AnyState : CancellationHandler {
+    AnyState(CancellationSlot slot) noexcept : slot_{slot} {}
+
     std::coroutine_handle<> arrived() {
         auto cur_counter = --counter;
 
@@ -44,10 +47,6 @@ struct AnyState : CancellationHandler, supp::Pinned {
 
     bool done() {
         return counter < sizeof...(Ts);
-    }
-
-    void setCancellationSlot(CancellationSlot slot) {
-        slot_ = slot;
     }
 
     void connectCancellation() {
@@ -79,7 +78,7 @@ struct AnyState : CancellationHandler, supp::Pinned {
 };
 
 template <typename T, size_t Index, typename State>
-struct AnyTask : supp::Pinned {
+struct AnyTask : supp::NonCopyable {
     struct promise_type {
         promise_type(auto&& /*task*/, State* state) : state{state} {}
 
@@ -133,84 +132,104 @@ struct AnyTask : supp::Pinned {
     std::coroutine_handle<> coro;
 };
 
-template <size_t I, typename Task, typename State>
-AnyTask<awaitable_result_t<Task>, I, State> makeAnyTask(Task&& task, State* /*state*/) {
-    // The state goes to promise_type's constructor.
-    co_return co_await std::move(task);
-}
-
-template <size_t I, typename State, typename Task>
-void attachAnyTaskCancellation(State* state, Task& task) {
-    if constexpr (CancellableAwaitable<Task>) {
-        task.setCancellationSlot(state->template getSlot<I>());
-    }
-}
-
-template <typename State, typename... Tasks>
-auto makeAnyTasksTuple(State* state, Tasks&&... tasks) {
-    return [&]<size_t... Is>(std::index_sequence<Is...>) {
-        // Install the cancellation slot before task.start() is called
-        (attachAnyTaskCancellation<Is>(state, tasks), ...);
-
-        return std::tuple<AnyTask<awaitable_result_t<Tasks>, Is, State>...>(
-            makeAnyTask<Is>(std::forward<Tasks>(tasks), state)...);
-    }(std::make_integer_sequence<size_t, sizeof...(Tasks)>());
-}
-
 template <typename... Tasks>
-struct [[nodiscard]] AnyAwaitable : supp::Pinned {
-    using StateType = AnyState<awaitable_result_t<Tasks>...>;
+struct [[nodiscard]] Any : supp::NonCopyable {
     using ResultType = std::tuple<awaitable_result_t<Tasks>...>;
+    using StateType = AnyState<awaitable_result_t<Tasks>...>;
 
-    StateType state_;
-
-    using AnyTasksTuple = decltype(makeAnyTasksTuple(&state_, std::declval<Tasks>()...));
-
-    AnyTasksTuple tasks_;
-
-    template <typename... Args>
-    AnyAwaitable(Args&&... tasks)
-        : tasks_{makeAnyTasksTuple(&state_, std::forward<Args>(tasks)...)} {}
-
-    bool await_ready() noexcept {
-        // start all tasks
-        std::apply([](auto&... task) { (task.start(), ...); }, tasks_);
-
-        // suspend only if not done
-        if (!state_.done()) {
-            return false;
-        }
-
-        // operation is complete, cancel all other tasks
-        state_.cancel();
-        return true;
-    }
-
-    void await_suspend(std::coroutine_handle<> caller) noexcept {
-        state_.connectCancellation();
-
-        // All tasks have been started, but none of them completed. Register awaiter.
-        state_.all_waiter = caller;
-    }
-
-    ResultType await_resume() noexcept {
-        return std::apply(
-            [](auto&&... rs) { return ResultType(std::move(rs).get()...); },
-            std::move(state_.result));
-    }
+    Any(Tasks... tasks) : tasks_(std::move(tasks)...) {}
+    Any(Any&&) noexcept = default;
 
     // CancellableAwaitable
-    AnyAwaitable& setCancellationSlot(CancellationSlot slot) {
-        state_.setCancellationSlot(slot);
+    Any& setCancellationSlot(CancellationSlot slot) {
+        slot_ = slot;
         return *this;
     }
+
+    auto operator co_await() /*&&*/ noexcept {
+        return Awaitable{std::move(tasks_), slot_};
+    }
+
+ private:
+    struct Awaitable : supp::Pinned {
+        Awaitable(std::tuple<Tasks...>&& tasks, CancellationSlot slot)
+            : state_{slot}
+            , tasks_(
+                  std::apply(
+                      [&](auto&&... tasks) { return makeTasks(&state_, std::move(tasks)...); },
+                      std::move(tasks))) {}
+
+        bool await_ready() noexcept {
+            // start all tasks
+            std::apply([](auto&... task) { (task.start(), ...); }, tasks_);
+
+            // suspend only if not done
+            if (!state_.done()) {
+                return false;
+            }
+
+            // operation is complete, cancel all other tasks
+            state_.cancel();
+            return true;
+        }
+
+        void await_suspend(std::coroutine_handle<> caller) noexcept {
+            state_.connectCancellation();
+
+            // All tasks have been started, but none of them completed. Register awaiter.
+            state_.all_waiter = caller;
+        }
+
+        ResultType await_resume() noexcept {
+            return std::apply(
+                [](auto&&... rs) { return ResultType(std::move(rs).get()...); },
+                std::move(state_.result));
+        }
+
+     private:
+        template <size_t I, typename Task>
+        static AnyTask<awaitable_result_t<Task>, I, StateType> makeTask(
+            Task&& task, StateType* /*state*/) {
+            // state is passed to the promise_type's constructor
+            co_return co_await std::move(task);
+        }
+
+        // Sets appropriate cancellation slots to all tasks.
+        // Creates co_await'ting AnyTask that will be able to start them.
+        // Does not start tasks right away.
+        static auto makeTasks(StateType* state, Tasks&&... tasks) {
+            return [&]<size_t... Is>(std::index_sequence<Is...>) {
+                (attachCancellation<Is>(state, tasks), ...);
+
+                return std::tuple<AnyTask<awaitable_result_t<Tasks>, Is, StateType>...>(
+                    makeTask<Is>(std::move(tasks), state)...);
+            }(std::make_integer_sequence<size_t, sizeof...(Tasks)>());
+        }
+
+        // Sets appropriate cancellation slots to Ith child task.
+        template <size_t I, typename Task>
+        static void attachCancellation(StateType* state, Task& task) {
+            if constexpr (CancellableAwaitable<Task>) {
+                task.setCancellationSlot(state->template getSlot<I>());
+            }
+        }
+
+        using TasksTuple =
+            decltype(makeTasks(std::declval<StateType*>(), std::declval<Tasks>()...));
+
+        StateType state_;
+        TasksTuple tasks_;
+    };
+
+    std::tuple<Tasks...> tasks_;
+    CancellationSlot slot_{};
 };
 
 }  // namespace detail
 
 template <typename... Tasks>
-auto any(Tasks&&... tasks) {
-    return detail::AnyAwaitable<Tasks...>(std::forward<Tasks>(tasks)...);
+auto any(Tasks... tasks) {
+    return detail::Any(std::move(tasks)...);
 }
 
 }  // namespace exec

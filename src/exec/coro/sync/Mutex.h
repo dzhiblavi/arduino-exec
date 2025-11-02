@@ -3,6 +3,7 @@
 #include "exec/cancel.h"
 
 #include <supp/IntrusiveList.h>
+#include <supp/NonCopyable.h>
 #include <supp/Pinned.h>
 
 #include <coroutine>
@@ -45,12 +46,12 @@ class Mutex : supp::Pinned {
     }
 
     auto lock() {
-        return Parked{this};
+        return Lock{this};
     }
 
  private:
-    struct [[nodiscard]] Parked : CancellationHandler, supp::IntrusiveListNode, supp::Pinned {
-        explicit Parked(Mutex* self) : self_{self} {}
+    struct Awaitable : CancellationHandler, supp::IntrusiveListNode {
+        Awaitable(Mutex* self, CancellationSlot slot) : self_{self}, slot_{slot} {}
 
         bool await_ready() noexcept {
             return self_->tryLockRaw();
@@ -65,12 +66,6 @@ class Mutex : supp::Pinned {
 
         auto await_resume() const noexcept {
             return LockGuard{self_};
-        }
-
-        // CancellableAwaitable
-        Parked& setCancellationSlot(CancellationSlot slot) noexcept {
-            slot_ = slot;
-            return *this;
         }
 
         // CancellationHandler
@@ -89,8 +84,27 @@ class Mutex : supp::Pinned {
 
      private:
         Mutex* self_;
-        std::coroutine_handle<> caller_;
         CancellationSlot slot_;
+        std::coroutine_handle<> caller_;
+    };
+
+    struct [[nodiscard]] Lock : supp::NonCopyable {
+     public:
+        Lock(Mutex* self) : self_{self} {}
+
+        // CancellableAwaitable
+        Lock& setCancellationSlot(CancellationSlot slot) noexcept {
+            slot_ = slot;
+            return *this;
+        }
+
+        auto operator co_await() noexcept {
+            return Awaitable{self_, slot_};
+        }
+
+     private:
+        Mutex* self_;
+        CancellationSlot slot_{};
     };
 
     bool tryLockRaw() {
@@ -113,7 +127,7 @@ class Mutex : supp::Pinned {
         parked_.popFront()->takeLock();
     }
 
-    supp::IntrusiveList<Parked> parked_;
+    supp::IntrusiveList<Awaitable> parked_;
     bool locked_ = false;
 
     friend class LockGuard;

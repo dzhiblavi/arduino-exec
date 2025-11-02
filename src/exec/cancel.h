@@ -9,7 +9,7 @@
 
 namespace exec {
 
-struct CancellationHandler {
+struct CancellationHandler : supp::Pinned {
     virtual ~CancellationHandler() = default;
     [[nodiscard]] virtual Runnable* cancel() = 0;
 };
@@ -50,7 +50,6 @@ class CancellationSlot {
     CancellationSlot(CancellationHandler** handler) : handler_{handler} {}
 
     void install(CancellationHandler* handler) {
-        DASSERT(isConnected());
         *handler_ = handler;
     }
 

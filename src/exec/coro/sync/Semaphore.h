@@ -4,13 +4,13 @@
 #include "exec/cancel.h"
 
 #include <supp/IntrusiveList.h>
-#include <supp/Pinned.h>
+#include <supp/NonCopyable.h>
 
 #include <coroutine>
 
 namespace exec {
 
-class Semaphore : supp::Pinned {
+class Semaphore : supp::NonCopyable {
  public:
     explicit Semaphore(int init) : counter_{init} {}
 
@@ -24,7 +24,7 @@ class Semaphore : supp::Pinned {
     }
 
     auto acquire() {
-        return Parked{this};
+        return Acquire{this};
     }
 
     void release() {
@@ -37,8 +37,8 @@ class Semaphore : supp::Pinned {
     }
 
  private:
-    struct [[nodiscard]] Parked : CancellationHandler, supp::IntrusiveListNode, supp::Pinned {
-        explicit Parked(Semaphore* self) : self_{self} {}
+    struct Awaitable : CancellationHandler, supp::IntrusiveListNode {
+        explicit Awaitable(Semaphore* self, CancellationSlot slot) : self_{self}, slot_{slot} {}
 
         bool await_ready() noexcept {
             return self_->tryAcquire();
@@ -52,12 +52,6 @@ class Semaphore : supp::Pinned {
 
         ErrCode await_resume() const noexcept {
             return self_ == nullptr ? ErrCode::Cancelled : ErrCode::Success;
-        }
-
-        // CancellableAwaitable
-        Parked& setCancellationSlot(CancellationSlot slot) noexcept {
-            slot_ = slot;
-            return *this;
         }
 
         // CancellationHandler
@@ -75,11 +69,30 @@ class Semaphore : supp::Pinned {
         }
 
         Semaphore* self_;
-        std::coroutine_handle<> caller_;
         CancellationSlot slot_;
+        std::coroutine_handle<> caller_;
     };
 
-    supp::IntrusiveList<Parked> parked_;
+    struct [[nodiscard]] Acquire : supp::NonCopyable {
+     public:
+        Acquire(Semaphore* self) : self_{self} {}
+
+        // CancellableAwaitable
+        Acquire& setCancellationSlot(CancellationSlot slot) noexcept {
+            slot_ = slot;
+            return *this;
+        }
+
+        auto operator co_await() noexcept {
+            return Awaitable{self_, slot_};
+        }
+
+     private:
+        Semaphore* self_;
+        CancellationSlot slot_{};
+    };
+
+    supp::IntrusiveList<Awaitable> parked_;
     int counter_ = 0;
 };
 

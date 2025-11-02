@@ -14,6 +14,7 @@ struct t_mpmc_channel {
             if (x == -1) {
                 TEST_ASSERT_FALSE(y.has_value());
             } else {
+                TEST_ASSERT_TRUE(y.has_value());
                 TEST_ASSERT_EQUAL(x, *y);
             }
         }(x));
@@ -69,6 +70,7 @@ TEST_F(t_mpmc_channel, sender_blocked_when_filled) {
     auto r = receiver(10);  // 10 -- check FIFO
     r.start();
     TEST_ASSERT_TRUE(r.done());
+    TEST_ASSERT_TRUE(s3.done());
 }
 
 TEST_F(t_mpmc_channel, fifo_no_blocking) {
@@ -175,14 +177,13 @@ TEST_F(t_mpmc_channel, receive_cancellation) {
 
 TEST_F(t_mpmc_channel, send_cancellation) {
     CancellationSignal sig;
-    bool cancel = GENERATE(false, true);
 
     auto s1 = sender(10, ErrCode::Success);
     auto s2 = sender(20, ErrCode::Success);
     auto coro = makeManualTask([&]() -> Async<> {
         int x = 30;
         auto ec = co_await c.send(x).setCancellationSlot(sig.slot());
-        TEST_ASSERT_EQUAL(cancel ? ErrCode::Cancelled : ErrCode::Success, ec);
+        TEST_ASSERT_EQUAL(ErrCode::Cancelled, ec);
     }());
 
     s1.start();
@@ -193,11 +194,8 @@ TEST_F(t_mpmc_channel, send_cancellation) {
     TEST_ASSERT_TRUE(sig.hasHandler());
     TEST_ASSERT_FALSE(coro.done());
 
-    if (cancel) {
-        sig.emit();
-    } else {
-        receiver(10).start();
-    }
+    sig.emit();
+    TEST_ASSERT_TRUE(coro.done());
 }
 
 }  // namespace exec

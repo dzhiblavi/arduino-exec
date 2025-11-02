@@ -26,7 +26,7 @@ struct t_read {
     template <size_t N>
     void push(const char (&s)[N]) {
         for (size_t i = 0; i < N - 1; ++i) {
-            stream.buf.push(static_cast<int>(s[i]));
+            this->stream.buf.push(static_cast<int>(s[i]));
         }
     }
 
@@ -83,7 +83,7 @@ TEST_F(t_read, test_connects_cancellation) {
     char dst[20];
 
     auto coro = makeManualTask([&](CancellationSlot slot) -> Async<> {
-        co_await read(&stream, dst, 4).setCancellationSlot(sig.slot());
+        co_await read(&stream, dst, 4).setCancellationSlot(slot);
     }(sig.slot()));
 
     TEST_ASSERT_FALSE(sig.hasHandler());

@@ -21,6 +21,18 @@ struct Stream : public ::exec::Stream {
         return buf.front();
     }
 
+    int availableForWrite() {
+        return 0;
+    }
+
+    size_t write(uint8_t) {
+        return 0;
+    }
+
+    size_t write(const char*, size_t) {
+        return 0;
+    }
+
     supp::CircularBuffer<int, 10> buf;
 };
 

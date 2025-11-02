@@ -5,17 +5,20 @@
 #include "exec/io/stream/Stream.h"
 #include "exec/os/Service.h"
 
+#include <supp/NonCopyable.h>
+
 #include <algorithm>
 #include <coroutine>
 
 namespace exec {
 
 auto write(Print* print, const char* dst, size_t len) {
-    struct Awaitable : Runnable, CancellationHandler, supp::Pinned {
-        Awaitable(Print* print, const char* buf, size_t len)
+    struct Awaitable : Runnable, CancellationHandler {
+        Awaitable(Print* print, const char* buf, size_t len, CancellationSlot slot)
             : print_{print}
             , buf_{buf}
-            , len_{len} {}
+            , len_{len}
+            , slot_{slot} {}
 
         bool await_ready() noexcept {
             return performWrite();
@@ -29,12 +32,6 @@ auto write(Print* print, const char* dst, size_t len) {
 
         size_t await_resume() const noexcept {
             return wrote_;
-        }
-
-        // CancellableAwaitable
-        Awaitable& setCancellationSlot(CancellationSlot slot) noexcept {
-            slot_ = slot;
-            return *this;
         }
 
      private:
@@ -81,13 +78,30 @@ auto write(Print* print, const char* dst, size_t len) {
         Print* const print_;
         const char* buf_;
         size_t len_;
+        CancellationSlot slot_;
 
         size_t wrote_ = 0;
         std::coroutine_handle<> caller_;
-        CancellationSlot slot_;
     };
 
-    return Awaitable(print, dst, len);
+    struct Op {
+        // CancellableAwaitable
+        Op& setCancellationSlot(CancellationSlot slot) noexcept {
+            this->slot = slot;
+            return *this;
+        }
+
+        auto operator co_await() noexcept {
+            return Awaitable{print, buf, len, slot};
+        }
+
+        Print* const print;
+        const char* buf;
+        size_t len;
+        CancellationSlot slot{};
+    };
+
+    return Op{print, dst, len};
 }
 
 }  // namespace exec

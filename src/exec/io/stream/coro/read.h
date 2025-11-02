@@ -5,13 +5,19 @@
 #include "exec/io/stream/Stream.h"
 #include "exec/os/Service.h"
 
+#include <supp/NonCopyable.h>
+
 #include <coroutine>
 
 namespace exec {
 
 auto read(Stream* stream, char* dst, size_t len) {
-    struct Awaitable : Runnable, CancellationHandler, supp::Pinned {
-        Awaitable(Stream* stream, char* dst, size_t len) : stream_{stream}, dst_{dst}, len_{len} {}
+    struct Awaitable : Runnable, CancellationHandler {
+        Awaitable(Stream* stream, char* dst, size_t len, CancellationSlot slot)
+            : stream_{stream}
+            , dst_{dst}
+            , len_{len}
+            , slot_{slot} {}
 
         bool await_ready() noexcept {
             return performRead();
@@ -27,13 +33,6 @@ auto read(Stream* stream, char* dst, size_t len) {
             return read_;
         }
 
-        // CancellableAwaitable
-        Awaitable& setCancellationSlot(CancellationSlot slot) noexcept {
-            slot_ = slot;
-            return *this;
-        }
-
-     private:
         // Runnable
         Runnable* run() override {
             if (performRead()) {
@@ -80,7 +79,28 @@ auto read(Stream* stream, char* dst, size_t len) {
         CancellationSlot slot_;
     };
 
-    return Awaitable(stream, dst, len);
+    struct Op : supp::NonCopyable {
+        Op(Stream* stream, char* dst, size_t len) : stream_{stream}, dst_{dst}, len_{len} {}
+        Op(Op&&) noexcept = default;
+
+        // CancellableAwaitable
+        Op& setCancellationSlot(CancellationSlot slot) noexcept {
+            slot_ = slot;
+            return *this;
+        }
+
+        auto operator co_await() noexcept {
+            return Awaitable(stream_, dst_, len_, slot_);
+        }
+
+     private:
+        Stream* const stream_;
+        char* dst_;
+        size_t len_;
+        CancellationSlot slot_;
+    };
+
+    return Op(stream, dst, len);
 }
 
 }  // namespace exec

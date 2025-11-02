@@ -7,7 +7,7 @@
 #include <supp/CircularBuffer.h>
 #include <supp/IntrusiveList.h>
 #include <supp/ManualLifetime.h>
-#include <supp/Pinned.h>
+#include <supp/NonCopyable.h>
 
 #include <coroutine>
 #include <cstddef>
@@ -22,17 +22,17 @@ class MPMCChannel {
     MPMCChannel() = default;
 
     auto receive() noexcept {
-        return ReceiveAwaitable{this};
+        return Receive{this};
     }
 
     auto send(T& value) noexcept {
-        return SendAwaitable{this, value};
+        return Send{this, &value};
     }
 
  private:
-    struct Awaitable : CancellationHandler, supp::Pinned, supp::IntrusiveListNode {
+    struct Awaitable : CancellationHandler, supp::IntrusiveListNode {
      public:
-        explicit Awaitable(MPMCChannel* self) : self{self} {}
+        Awaitable(MPMCChannel* self, CancellationSlot slot) : self{self}, slot{slot} {}
 
      protected:
         // CancellationHandler
@@ -44,9 +44,9 @@ class MPMCChannel {
             return noop;
         }
 
+        MPMCChannel* self;
         CancellationSlot slot;
         std::coroutine_handle<> caller = nullptr;
-        MPMCChannel* self = nullptr;
     };
 
     struct ReceiveAwaitable : Awaitable {
@@ -81,9 +81,9 @@ class MPMCChannel {
             return value.initialized() ? std::optional<T>{std::move(value).get()} : std::nullopt;
         }
 
-        void resume(T& val) {
+        void resume(T* val) {
             slot.clearIfConnected();
-            value.emplace(std::move(val));
+            value.emplace(std::move(*val));
             caller.resume();
         }
 
@@ -103,7 +103,9 @@ class MPMCChannel {
 
     struct SendAwaitable : Awaitable {
      public:
-        SendAwaitable(MPMCChannel* self, T& value) : Awaitable(self), value{value} {}
+        SendAwaitable(MPMCChannel* self, T* value, CancellationSlot slot)
+            : Awaitable(self, slot)
+            , value{value} {}
 
         bool await_ready() const noexcept {
             if (self->buf_.empty() && !self->parked_.empty()) {
@@ -113,7 +115,7 @@ class MPMCChannel {
             }
 
             if (!self->buf_.full()) {
-                self->buf_.push(std::move(value));
+                self->buf_.push(std::move(*value));
                 return true;
             }
 
@@ -134,14 +136,8 @@ class MPMCChannel {
 
         void resume() {
             slot.clearIfConnected();
-            self->buf_.push(std::move(value));
+            self->buf_.push(std::move(*value));
             caller.resume();
-        }
-
-        // CancellableAwaitable
-        auto& setCancellationSlot(CancellationSlot a_slot) noexcept {
-            slot = a_slot;
-            return *this;
         }
 
      private:
@@ -149,7 +145,48 @@ class MPMCChannel {
         using Awaitable::self;
         using Awaitable::slot;
 
-        T& value;
+        T* value;
+    };
+
+    struct Receive : supp::NonCopyable {
+     public:
+        Receive(MPMCChannel* self) : self_{self} {}
+        Receive(Receive&&) noexcept = default;
+
+        // CancellableAwaitable
+        Receive& setCancellationSlot(CancellationSlot slot) noexcept {
+            slot_ = slot;
+            return *this;
+        }
+
+        auto operator co_await() noexcept {
+            return ReceiveAwaitable{self_, slot_};
+        }
+
+     private:
+        MPMCChannel* self_;
+        CancellationSlot slot_{};
+    };
+
+    struct Send : supp::NonCopyable {
+     public:
+        Send(MPMCChannel* self, T* value) : self_{self}, value{value} {}
+        Send(Send&&) noexcept = default;
+
+        // CancellableAwaitable
+        Send& setCancellationSlot(CancellationSlot slot) noexcept {
+            slot_ = slot;
+            return *this;
+        }
+
+        auto operator co_await() noexcept {
+            return SendAwaitable{self_, value, slot_};
+        }
+
+     private:
+        MPMCChannel* self_;
+        T* value;
+        CancellationSlot slot_{};
     };
 
     supp::CircularBuffer<T, Capacity> buf_;
