@@ -14,7 +14,7 @@ class Result {  // NOLINT
  public:
     Result() = default;
 
-    explicit Result(ErrCode code) noexcept : code_{code} {  // NOLINT
+    explicit Result(ErrCode code) : code_{code} {  // NOLINT
         DASSERT(!hasValue(), "cannot construct Result<T> with Success code");
     }
 
@@ -62,7 +62,7 @@ class Result {  // NOLINT
         return *this;
     }
 
-    Result& operator=(Result&& r) noexcept {
+    Result& operator=(Result&& r) {
         if (this == &r) {
             return *this;
         }
@@ -84,7 +84,7 @@ class Result {  // NOLINT
         return *this;
     }
 
-    ~Result() noexcept {
+    ~Result() {
         if (!hasValue()) {
             return;
         }
@@ -92,7 +92,7 @@ class Result {  // NOLINT
         release();
     }
 
-    void setError(ErrCode code) noexcept {
+    void setError(ErrCode code) {
         DASSERT(code != ErrCode::Success, "cannot emplace Result<T> with Success code");
 
         if (hasValue()) {
@@ -103,7 +103,7 @@ class Result {  // NOLINT
     }
 
     template <typename U>
-    void emplace(U&& val) noexcept {
+    void emplace(U&& val) {
         if (hasValue()) {
             get() = std::forward<U>(val);
         } else {
@@ -112,32 +112,32 @@ class Result {  // NOLINT
         }
     }
 
-    bool hasValue() const noexcept { return code_ == ErrCode::Success; }
+    bool hasValue() const { return code_ == ErrCode::Success; }
 
-    explicit operator bool() const noexcept { return hasValue(); }
+    explicit operator bool() const { return hasValue(); }
 
-    T& operator*() noexcept { return get(); }
+    T& operator*() { return get(); }
 
-    const T& operator*() const noexcept { return get(); }
+    const T& operator*() const { return get(); }
 
-    T get() && noexcept {
+    T get() && {
         DASSERT(hasValue());
         auto result = std::move(*ptr());
         release();
         return result;
     }
 
-    T& get() & noexcept {
+    T& get() & {
         DASSERT(hasValue());
         return *ptr();
     }
 
-    const T& get() const& noexcept {
+    const T& get() const& {
         DASSERT(hasValue());
         return *ptr();
     }
 
-    ErrCode code() const noexcept { return code_; }
+    ErrCode code() const { return code_; }
 
  private:
     void release() {
@@ -146,9 +146,9 @@ class Result {  // NOLINT
         code_ = ErrCode::Unknown;
     }
 
-    T* ptr() noexcept { return reinterpret_cast<T*>(data_); }
+    T* ptr() { return reinterpret_cast<T*>(data_); }
 
-    const T* ptr() const noexcept { return reinterpret_cast<const T*>(data_); }
+    const T* ptr() const { return reinterpret_cast<const T*>(data_); }
 
     alignas(T) uint8_t data_[sizeof(T)] /* uninitialized */;
     ErrCode code_ = ErrCode::Unknown;

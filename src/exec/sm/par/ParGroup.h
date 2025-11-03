@@ -25,14 +25,14 @@ class ParGroup : Runnable, CancellationHandler {
     static_assert(Children >= 2, "One child does not make sense for ParGroup");
 
  public:
-    ParGroup() noexcept {
+    ParGroup() {
         for (auto& child : children_) {
             child.parent = this;
         }
     }
 
     // NOTE: Equivalent to the default constructor.
-    ParGroup(ParGroup&&) noexcept : ParGroup() {}
+    ParGroup(ParGroup&&) : ParGroup() {}
 
     template <Initiator... Init>
     [[nodiscard]] Initiator auto operator()(Init&&... init) {

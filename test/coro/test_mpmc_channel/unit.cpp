@@ -1,3 +1,5 @@
+#define LOGGING_DISABLED
+
 #include <exec/coro/Async.h>
 #include <exec/coro/ManualTask.h>
 #include <exec/coro/sync/MPMCChannel.h>

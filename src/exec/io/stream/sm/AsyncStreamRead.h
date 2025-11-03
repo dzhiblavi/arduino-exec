@@ -17,7 +17,7 @@ class AsyncStreamRead : Runnable, CancellableOperation<> {
     explicit AsyncStreamRead(Stream* stream) : stream_{stream} {}
 
     // NOTE: Equivalent to the Stream* constructor.
-    AsyncStreamRead(AsyncStreamRead&& rhs) noexcept : AsyncStreamRead(rhs.stream_) {}
+    AsyncStreamRead(AsyncStreamRead&& rhs) : AsyncStreamRead(rhs.stream_) {}
 
     Initiator auto operator()(char* dst, int* count, ErrCode* err) {
         return [this, dst, count, err](Runnable* cb, CancellationSlot slot = {}) {

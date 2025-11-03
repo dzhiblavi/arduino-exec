@@ -15,24 +15,16 @@ class Event : supp::Pinned {
  public:
     Event() = default;
 
-    bool isSet() const {
-        return fired_;
-    }
+    bool isSet() const { return fired_; }
 
-    auto wait() {
-        return Wait{this};
-    }
+    auto wait() { return Wait{this}; }
+
+    void clear() { fired_ = false; }
+
+    void fireOnce() { releaseAll(); }
 
     void set() {
         fired_ = true;
-        releaseAll();
-    }
-
-    void clear() {
-        fired_ = false;
-    }
-
-    void fireOnce() {
         releaseAll();
     }
 
@@ -41,9 +33,7 @@ class Event : supp::Pinned {
      public:
         Awaitable(Event* self, CancellationSlot slot) : self_{self}, slot_{slot} {}
 
-        bool await_ready() noexcept {
-            return self_->fired_;
-        }
+        bool await_ready() { return self_->fired_; }
 
         // Locked, should park
         void await_suspend(std::coroutine_handle<> caller) {
@@ -52,7 +42,7 @@ class Event : supp::Pinned {
             self_->parked_.pushBack(this);
         }
 
-        ErrCode await_resume() const noexcept {
+        ErrCode await_resume() const {
             return self_ == nullptr ? ErrCode::Cancelled : ErrCode::Success;
         }
 
@@ -80,14 +70,12 @@ class Event : supp::Pinned {
         Wait(Event* self) : self_{self} {}
 
         // CancellableAwaitable
-        Wait& setCancellationSlot(CancellationSlot slot) noexcept {
+        Wait& setCancellationSlot(CancellationSlot slot) {
             slot_ = slot;
             return *this;
         }
 
-        auto operator co_await() noexcept {
-            return Awaitable{self_, slot_};
-        }
+        auto operator co_await() { return Awaitable{self_, slot_}; }
 
      private:
         Event* self_;

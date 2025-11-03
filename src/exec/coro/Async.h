@@ -29,7 +29,7 @@ namespace detail {
 template <typename T>
 class AsyncPromiseBase : CancellationHandler {
     template <typename P>
-    static std::coroutine_handle<> finalSuspend(std::coroutine_handle<P> self) noexcept {
+    static std::coroutine_handle<> finalSuspend(std::coroutine_handle<P> self) {
         auto& promise = self.promise();
         promise.up_slot_.clearIfConnected();
 
@@ -42,7 +42,7 @@ class AsyncPromiseBase : CancellationHandler {
         constexpr bool await_ready() const noexcept { return false; }
 
         template <typename P>
-        std::coroutine_handle<> await_suspend(std::coroutine_handle<P> self) noexcept {
+        std::coroutine_handle<> await_suspend(std::coroutine_handle<P> self) {
             return finalSuspend(self);
         }
 
@@ -51,10 +51,10 @@ class AsyncPromiseBase : CancellationHandler {
 
     template <typename A>
     struct Callee {
-        bool await_ready() noexcept { return !cancelled && impl.await_ready(); }
+        bool await_ready() { return !cancelled && impl.await_ready(); }
 
         template <typename P>
-        std::coroutine_handle<> await_suspend(std::coroutine_handle<P> self_p) noexcept {
+        std::coroutine_handle<> await_suspend(std::coroutine_handle<P> self_p) {
             if (cancelled) {
                 return finalSuspend(self_p);
             }
@@ -67,7 +67,7 @@ class AsyncPromiseBase : CancellationHandler {
             }
         }
 
-        decltype(auto) await_resume() noexcept {
+        decltype(auto) await_resume() {
             DASSERT(!cancelled, "implementation bug");
             return std::move(impl).await_resume();
         }
@@ -77,14 +77,14 @@ class AsyncPromiseBase : CancellationHandler {
     };
 
     struct IgnoreCancellationGuard : supp::NonCopyable {
-        IgnoreCancellationGuard(IgnoreCancellationGuard&& rhs) noexcept
-            : self{std::exchange(rhs.self, nullptr)} {}
-
-        IgnoreCancellationGuard(AsyncPromiseBase* self) noexcept : self{self} {
+        IgnoreCancellationGuard(AsyncPromiseBase* self) : self{self} {
             self->up_slot_.clearIfConnected();
         }
 
-        ~IgnoreCancellationGuard() noexcept {
+        IgnoreCancellationGuard(IgnoreCancellationGuard&& rhs) noexcept
+            : self{std::exchange(rhs.self, nullptr)} {}
+
+        ~IgnoreCancellationGuard() {
             if (self) {
                 self->up_slot_.installIfConnected(self);
             }
@@ -94,32 +94,31 @@ class AsyncPromiseBase : CancellationHandler {
     };
 
     struct IgnoreCancellationAwaitable {
-        bool await_ready() const noexcept { return true; }
-        void await_suspend(std::coroutine_handle<>) const noexcept {}
-        IgnoreCancellationGuard await_resume() const noexcept { return {self}; }
+        bool await_ready() const { return true; }
+        void await_suspend(std::coroutine_handle<>) const {}
+        IgnoreCancellationGuard await_resume() const { return {self}; }
         AsyncPromiseBase* self;
     };
 
  public:
-    AsyncPromiseBase() noexcept = default;
+    AsyncPromiseBase() = default;
 
-    auto initial_suspend() noexcept { return std::suspend_always{}; }
+    auto initial_suspend() { return std::suspend_always{}; }
     auto final_suspend() noexcept { return FinalAwaitable{}; }
 
-    void unhandled_exception() noexcept {
+    void unhandled_exception() {
         LFATAL("unhandled exception in Async body");
         abort();
     }
 
     template <typename A>
-    auto await_transform(A&& awaitable) noexcept {
+    auto await_transform(A&& awaitable) {
         return std::forward<A>(awaitable);
     }
 
     template <CancellableAwaitable A>
     auto await_transform(A&& awaitable) {
         if (up_slot_.isConnected()) [[likely]] {
-            // connect the downstream cancellation chain
             awaitable.setCancellationSlot(down_sig_.slot());
         }
 
@@ -127,13 +126,11 @@ class AsyncPromiseBase : CancellationHandler {
             cancelled(), std::forward<A>(awaitable).operator co_await());
     }
 
-    auto await_transform(ignore_cancellation_t) noexcept {
-        return IgnoreCancellationAwaitable{this};
-    }
+    auto await_transform(ignore_cancellation_t) { return IgnoreCancellationAwaitable{this}; }
 
-    void setCancellationSlot(CancellationSlot slot) noexcept { up_slot_ = slot; }
+    void setCancellationSlot(CancellationSlot slot) { up_slot_ = slot; }
 
-    void suspend(std::coroutine_handle<> caller, Result<T>* result) noexcept {
+    void suspend(std::coroutine_handle<> caller, Result<T>* result) {
         continuation_ = caller;
         result_ = result;
         up_slot_.installIfConnected(this);
@@ -148,14 +145,14 @@ class AsyncPromiseBase : CancellationHandler {
 
  private:
     // CancellationHandler
-    Runnable* cancel() noexcept override {
+    Runnable* cancel() override {
         up_slot_.clearIfConnected();
         result_->setError(ErrCode::Cancelled);
         down_sig_.emit();
         return noop;
     }
 
-    bool cancelled() const noexcept { return result_->code() == ErrCode::Cancelled; }
+    bool cancelled() const { return result_->code() == ErrCode::Cancelled; }
 
     CancellationSlot up_slot_;
     CancellationSignal down_sig_;
@@ -165,19 +162,19 @@ class AsyncPromiseBase : CancellationHandler {
 template <typename T>
 class AsyncPromise : public AsyncPromiseBase<T> {
  public:
-    AsyncPromise() noexcept = default;
+    AsyncPromise() = default;
 
-    auto get_return_object() noexcept {  // NOLINT
+    auto get_return_object() {  // NOLINT
         return std::coroutine_handle<AsyncPromise>::from_promise(*this);
     }
 
     template <typename U>
-    void return_value(U&& value) noexcept {
+    void return_value(U&& value) {
         DASSERT(this->result_);
         this->result_->emplace(std::forward<U>(value));
     }
 
-    void return_value(Result<T> value) noexcept {
+    void return_value(Result<T> value) {
         DASSERT(this->result_);
         *this->result_ = std::move(value);
     }
@@ -186,13 +183,11 @@ class AsyncPromise : public AsyncPromiseBase<T> {
 template <>
 class AsyncPromise<Unit> : public AsyncPromiseBase<Unit> {
  public:
-    AsyncPromise() noexcept = default;
+    AsyncPromise() = default;
 
-    auto get_return_object() noexcept {
-        return std::coroutine_handle<AsyncPromise>::from_promise(*this);
-    }
+    auto get_return_object() { return std::coroutine_handle<AsyncPromise>::from_promise(*this); }
 
-    void return_void() noexcept {
+    void return_void() {
         DASSERT(this->result_);
         this->result_->emplace(unit);
     }
@@ -206,40 +201,40 @@ class [[nodiscard]] Async : supp::NonCopyable {
     using promise_type = detail::AsyncPromise<T>;
     using value_type = T;
 
-    Async() noexcept = default;
+    Async() = default;
     Async(std::coroutine_handle<promise_type> coroutine) : coroutine_(coroutine) {}
-    Async(Async&& t) noexcept : coroutine_(std::exchange(t.coroutine_, nullptr)) {}
-    ~Async() noexcept { DASSERT(!coroutine_, F("Async<T> has not been consumed")); }
+    Async(Async&& t) : coroutine_(std::exchange(t.coroutine_, nullptr)) {}
+    ~Async() { DASSERT(!coroutine_, F("Async<T> has not been consumed")); }
 
     // CancellableAwaitable
-    Async& setCancellationSlot(CancellationSlot slot) & noexcept {
+    Async& setCancellationSlot(CancellationSlot slot) & {
         DASSERT(coroutine_, F("Async<T> has been consumed"));
         coroutine_.promise().setCancellationSlot(slot);
         return *this;
     }
 
     // CancellableAwaitable
-    Async setCancellationSlot(CancellationSlot slot) && noexcept {
+    Async setCancellationSlot(CancellationSlot slot) && {
         DASSERT(coroutine_, F("Async<T> has been consumed"));
         coroutine_.promise().setCancellationSlot(slot);
         return std::move(*this);
     }
 
-    auto operator co_await() noexcept {
+    auto operator co_await() {
         struct Awaitable : supp::Pinned {
             Awaitable(std::coroutine_handle<promise_type> coroutine)
                 : coroutine_{std::move(coroutine)} {}
 
-            bool await_ready() const noexcept { return !coroutine_ || coroutine_.done(); }
+            bool await_ready() const { return !coroutine_ || coroutine_.done(); }
 
-            std::coroutine_handle<> await_suspend(std::coroutine_handle<> caller) noexcept {
+            std::coroutine_handle<> await_suspend(std::coroutine_handle<> caller) {
                 DASSERT(coroutine_);
                 auto& promise = coroutine_.promise();
                 promise.suspend(caller, &result_);
                 return coroutine_;
             }
 
-            Result<T> await_resume() noexcept {
+            Result<T> await_resume() {
                 if (!coroutine_) {
                     result_.setError(ErrCode::OutOfMemory);
                 }
@@ -251,7 +246,7 @@ class [[nodiscard]] Async : supp::NonCopyable {
             Result<T> result_;
         };
 
-        // nullptr coroutine means OutOfMemory
+        // nullptr coroutine_ means OutOfMemory
         return Awaitable{std::exchange(coroutine_, nullptr)};
     }
 

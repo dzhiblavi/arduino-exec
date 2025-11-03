@@ -13,22 +13,18 @@ namespace exec {
 // Not cancellable
 auto yield() {
     struct [[nodiscard]] Awaitable : Runnable, supp::Pinned {
-        Awaitable() noexcept = default;
+        Awaitable() = default;
 
-        constexpr bool await_ready() const noexcept {
-            return false;
-        }
+        constexpr bool await_ready() const { return false; }
 
-        void await_suspend(std::coroutine_handle<> caller) noexcept {
+        void await_suspend(std::coroutine_handle<> caller) {
             this->caller = caller;
             service<Executor>()->post(this);
         }
 
-        constexpr Unit await_resume() noexcept {
-            return unit;
-        }
+        constexpr Unit await_resume() { return unit; }
 
-        Runnable* run() noexcept override {
+        Runnable* run() override {
             caller.resume();
             return noop;
         }

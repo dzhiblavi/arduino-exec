@@ -19,17 +19,17 @@ auto read(Stream* stream, char* dst, size_t len) {
             , len_{len}
             , slot_{slot} {}
 
-        bool await_ready() noexcept {
+        bool await_ready() {
             return performRead();
         }
 
-        void await_suspend(std::coroutine_handle<> caller) noexcept {
+        void await_suspend(std::coroutine_handle<> caller) {
             slot_.installIfConnected(this);
             caller_ = caller;
             service<Executor>()->post(this);
         }
 
-        size_t await_resume() const noexcept {
+        size_t await_resume() const {
             return read_;
         }
 
@@ -81,15 +81,15 @@ auto read(Stream* stream, char* dst, size_t len) {
 
     struct Op : supp::NonCopyable {
         Op(Stream* stream, char* dst, size_t len) : stream_{stream}, dst_{dst}, len_{len} {}
-        Op(Op&&) noexcept = default;
+        Op(Op&&) = default;
 
         // CancellableAwaitable
-        Op& setCancellationSlot(CancellationSlot slot) noexcept {
+        Op& setCancellationSlot(CancellationSlot slot) {
             slot_ = slot;
             return *this;
         }
 
-        auto operator co_await() noexcept {
+        auto operator co_await() {
             return Awaitable(stream_, dst_, len_, slot_);
         }
 

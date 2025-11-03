@@ -21,11 +21,11 @@ class MPMCChannel {
  public:
     MPMCChannel() = default;
 
-    auto receive() noexcept {
+    auto receive() {
         return Receive{this};
     }
 
-    auto send(T& value) noexcept {
+    auto send(T& value) {
         return Send{this, &value};
     }
 
@@ -53,7 +53,7 @@ class MPMCChannel {
      public:
         using Awaitable::Awaitable;
 
-        bool await_ready() noexcept {
+        bool await_ready() {
             if (self->buf_.full() && !self->parked_.empty()) {
                 value.emplace(self->buf_.pop());
 
@@ -88,7 +88,7 @@ class MPMCChannel {
         }
 
         // CancellableAwaitable
-        auto& setCancellationSlot(CancellationSlot a_slot) noexcept {
+        auto& setCancellationSlot(CancellationSlot a_slot) {
             slot = a_slot;
             return *this;
         }
@@ -107,7 +107,7 @@ class MPMCChannel {
             : Awaitable(self, slot)
             , value{value} {}
 
-        bool await_ready() const noexcept {
+        bool await_ready() const {
             if (self->buf_.empty() && !self->parked_.empty()) {
                 auto* receiver = static_cast<ReceiveAwaitable*>(self->parked_.popFront());
                 receiver->resume(value);
@@ -123,13 +123,13 @@ class MPMCChannel {
             return false;
         }
 
-        void await_suspend(std::coroutine_handle<> a_caller) noexcept {
+        void await_suspend(std::coroutine_handle<> a_caller) {
             caller = a_caller;
             slot.installIfConnected(this);
             self->parked_.pushBack(this);
         }
 
-        ErrCode await_resume() const noexcept {
+        ErrCode await_resume() const {
             // cancel() zeroes the self pointer
             return self == nullptr ? ErrCode::Cancelled : ErrCode::Success;
         }
@@ -151,15 +151,15 @@ class MPMCChannel {
     struct Receive : supp::NonCopyable {
      public:
         Receive(MPMCChannel* self) : self_{self} {}
-        Receive(Receive&&) noexcept = default;
+        Receive(Receive&&) = default;
 
         // CancellableAwaitable
-        Receive& setCancellationSlot(CancellationSlot slot) noexcept {
+        Receive& setCancellationSlot(CancellationSlot slot) {
             slot_ = slot;
             return *this;
         }
 
-        auto operator co_await() noexcept {
+        auto operator co_await() {
             return ReceiveAwaitable{self_, slot_};
         }
 
@@ -171,15 +171,15 @@ class MPMCChannel {
     struct Send : supp::NonCopyable {
      public:
         Send(MPMCChannel* self, T* value) : self_{self}, value{value} {}
-        Send(Send&&) noexcept = default;
+        Send(Send&&) = default;
 
         // CancellableAwaitable
-        Send& setCancellationSlot(CancellationSlot slot) noexcept {
+        Send& setCancellationSlot(CancellationSlot slot) {
             slot_ = slot;
             return *this;
         }
 
-        auto operator co_await() noexcept {
+        auto operator co_await() {
             return SendAwaitable{self_, value, slot_};
         }
 

@@ -40,7 +40,7 @@ class Semaphore : supp::NonCopyable {
     struct Awaitable : CancellationHandler, supp::IntrusiveListNode {
         explicit Awaitable(Semaphore* self, CancellationSlot slot) : self_{self}, slot_{slot} {}
 
-        bool await_ready() noexcept {
+        bool await_ready() {
             return self_->tryAcquire();
         }
 
@@ -50,7 +50,7 @@ class Semaphore : supp::NonCopyable {
             self_->parked_.pushBack(this);
         }
 
-        ErrCode await_resume() const noexcept {
+        ErrCode await_resume() const {
             return self_ == nullptr ? ErrCode::Cancelled : ErrCode::Success;
         }
 
@@ -78,12 +78,12 @@ class Semaphore : supp::NonCopyable {
         Acquire(Semaphore* self) : self_{self} {}
 
         // CancellableAwaitable
-        Acquire& setCancellationSlot(CancellationSlot slot) noexcept {
+        Acquire& setCancellationSlot(CancellationSlot slot) {
             slot_ = slot;
             return *this;
         }
 
-        auto operator co_await() noexcept {
+        auto operator co_await() {
             return Awaitable{self_, slot_};
         }
 

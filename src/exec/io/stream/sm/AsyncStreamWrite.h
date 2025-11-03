@@ -19,7 +19,7 @@ class AsyncPrintWrite : Runnable, CancellableOperation<> {
     explicit AsyncPrintWrite(Print* print) : print_{print} {}
 
     // NOTE: Equivalent to the Stream* constructor.
-    AsyncPrintWrite(AsyncPrintWrite&& rhs) noexcept : AsyncPrintWrite(rhs.print_) {}
+    AsyncPrintWrite(AsyncPrintWrite&& rhs) : AsyncPrintWrite(rhs.print_) {}
 
     Initiator auto operator()(const char* buf, int* count, ErrCode* err) {
         return [this, buf, count, err](Runnable* cb, CancellationSlot slot = {}) {

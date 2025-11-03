@@ -20,17 +20,17 @@ auto write(Print* print, const char* dst, size_t len) {
             , len_{len}
             , slot_{slot} {}
 
-        bool await_ready() noexcept {
+        bool await_ready() {
             return performWrite();
         }
 
-        void await_suspend(std::coroutine_handle<> caller) noexcept {
+        void await_suspend(std::coroutine_handle<> caller) {
             slot_.installIfConnected(this);
             caller_ = caller;
             service<Executor>()->post(this);
         }
 
-        size_t await_resume() const noexcept {
+        size_t await_resume() const {
             return wrote_;
         }
 
@@ -86,12 +86,12 @@ auto write(Print* print, const char* dst, size_t len) {
 
     struct Op {
         // CancellableAwaitable
-        Op& setCancellationSlot(CancellationSlot slot) noexcept {
+        Op& setCancellationSlot(CancellationSlot slot) {
             this->slot = slot;
             return *this;
         }
 
-        auto operator co_await() noexcept {
+        auto operator co_await() {
             return Awaitable{print, buf, len, slot};
         }
 

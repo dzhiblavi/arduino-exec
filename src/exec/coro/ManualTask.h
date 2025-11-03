@@ -17,27 +17,21 @@ struct ManualPromise {
         return std::coroutine_handle<ManualPromise<T>>::from_promise(*this);
     }
 
-    auto initial_suspend() const {
-        return std::suspend_always{};
-    }
+    auto initial_suspend() const { return std::suspend_always{}; }
 
     auto final_suspend() const noexcept {
         // allow user to retrieve the result
         return std::suspend_always{};
     }
 
-    void unhandled_exception() const noexcept {
+    void unhandled_exception() const {
         LFATAL("unhandled_exception");
         abort();
     }
 
-    void return_value(Result<T> res) {
-        result_ = std::move(res);
-    }
+    void return_value(Result<T> res) { result_ = std::move(res); }
 
-    const supp::ManualLifetime<T>& result() const {
-        return result_;
-    }
+    const supp::ManualLifetime<T>& result() const { return result_; }
 
  private:
     Result<T> result_;
@@ -46,19 +40,15 @@ struct ManualPromise {
 }  // namespace detail
 
 template <typename T>
-class ManualTask {
+class ManualTask : supp::NonCopyable {
  public:
     using promise_type = detail::ManualPromise<T>;
     using coroutine_handle_t = std::coroutine_handle<promise_type>;
 
     ManualTask(coroutine_handle_t coro) : coroutine_{coro} {}
-    ManualTask(ManualTask&& r) noexcept : coroutine_{std::exchange(r.coroutine_, nullptr)} {}
+    ManualTask(ManualTask&& r) : coroutine_{std::exchange(r.coroutine_, nullptr)} {}
 
-    // not copyable
-    ManualTask(const ManualTask&) = delete;
-    ManualTask& operator=(const ManualTask&) = delete;
-
-    ~ManualTask() noexcept {
+    ~ManualTask() {
         if (!coroutine_) {
             return;
         }

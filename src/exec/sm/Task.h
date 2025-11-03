@@ -10,7 +10,7 @@ namespace exec {
 class TaskBase : public Runnable, public supp::Coro {
  public:
     TaskBase() = default;
-    TaskBase(TaskBase&& rhs) noexcept = default;
+    TaskBase(TaskBase&& rhs) = default;
 
     // not copyable
     TaskBase(const TaskBase&) = delete;

@@ -5,8 +5,6 @@
 #include "exec/os/TimerService.h"
 
 #include <supp/NonCopyable.h>
-
-#include <logging/log.h>
 #include <time/mono.h>
 
 #include <coroutine>
@@ -16,27 +14,25 @@ namespace exec {
 // Cancellable delay
 auto wait(ttime::Duration d) {
     struct [[nodiscard]] Awaitable : Runnable, CancellationHandler, supp::NonCopyable {
-        Awaitable(ttime::Duration d, CancellationSlot slot) noexcept : d{d}, slot_{slot} {}
+        Awaitable(ttime::Duration d, CancellationSlot slot) : d{d}, slot_{slot} {}
 
-        bool await_ready() noexcept {
-            return d.micros() == 0;
-        }
+        bool await_ready() { return d.micros() == 0; }
 
-        void await_suspend(std::coroutine_handle<> an_awaiter) noexcept {
+        void await_suspend(std::coroutine_handle<> awaiter) {
             slot_.installIfConnected(this);
-            awaiter_ = an_awaiter;
+            awaiter_ = awaiter;
             entry_.at = ttime::mono::now() + d;
             entry_.task = this;
             service<TimerService>()->add(&entry_);
         }
 
-        ErrCode await_resume() const noexcept {
+        ErrCode await_resume() const {
             DASSERT(code_ != ErrCode::Unknown);
             return code_;
         }
 
         // called when timer went off
-        Runnable* run() noexcept override {
+        Runnable* run() override {
             DASSERT(code_ == ErrCode::Unknown);
             slot_.clearIfConnected();
             code_ = ErrCode::Success;
@@ -45,7 +41,7 @@ auto wait(ttime::Duration d) {
         }
 
         // called when cancellation is signalled
-        Runnable* cancel() noexcept override {
+        Runnable* cancel() override {
             slot_.clearIfConnected();
 
             if (!service<TimerService>()->remove(&entry_)) {
@@ -67,14 +63,12 @@ auto wait(ttime::Duration d) {
 
     struct Op {
         // CancellableAwaitable
-        Op& setCancellationSlot(CancellationSlot slot) noexcept {
+        Op& setCancellationSlot(CancellationSlot slot) {
             this->slot = slot;
             return *this;
         }
 
-        auto operator co_await() noexcept {
-            return Awaitable{d, slot};
-        }
+        auto operator co_await() { return Awaitable{d, slot}; }
 
         const ttime::Duration d;
         CancellationSlot slot{};

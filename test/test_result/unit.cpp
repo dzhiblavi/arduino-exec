@@ -27,7 +27,7 @@ supp::CircularBuffer<Op, 10>* ops_ = nullptr;
 struct Dummy {
     Dummy(int tag) : tag{tag} {}
     Dummy(const Dummy& r) : tag{r.tag} { ops_->push({tag, CopyConstruct}); }
-    Dummy(Dummy&& r) noexcept : tag{std::exchange(r.tag, -1)} { ops_->push({tag, MoveConstruct}); }
+    Dummy(Dummy&& r) : tag{std::exchange(r.tag, -1)} { ops_->push({tag, MoveConstruct}); }
     ~Dummy() { ops_->push({tag, Destroy}); }
 
     Dummy& operator=(const Dummy& r) {
@@ -36,7 +36,7 @@ struct Dummy {
         return *this;
     }
 
-    Dummy& operator=(Dummy&& r) noexcept {
+    Dummy& operator=(Dummy&& r) {
         ops_->push({tag, MoveAssign});
         tag = std::exchange(r.tag, -1);
         return *this;

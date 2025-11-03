@@ -21,10 +21,7 @@ class [[nodiscard]] LockGuard {
     LockGuard& operator=(LockGuard&& r) noexcept;
 
     void unlock() &&;
-
-    explicit operator bool() const noexcept {
-        return self_ != nullptr;
-    }
+    explicit operator bool() const { return self_ != nullptr; }
 
  private:
     LockGuard(Mutex* self) : self_{self} {}
@@ -45,17 +42,13 @@ class Mutex : supp::Pinned {
         return LockGuard{nullptr};
     }
 
-    auto lock() {
-        return Lock{this};
-    }
+    auto lock() { return Lock{this}; }
 
  private:
     struct Awaitable : CancellationHandler, supp::IntrusiveListNode {
         Awaitable(Mutex* self, CancellationSlot slot) : self_{self}, slot_{slot} {}
 
-        bool await_ready() noexcept {
-            return self_->tryLockRaw();
-        }
+        bool await_ready() { return self_->tryLockRaw(); }
 
         // Locked, should park
         void await_suspend(std::coroutine_handle<> caller) {
@@ -64,9 +57,7 @@ class Mutex : supp::Pinned {
             self_->parked_.pushBack(this);
         }
 
-        auto await_resume() const noexcept {
-            return LockGuard{self_};
-        }
+        auto await_resume() const { return LockGuard{self_}; }
 
         // CancellationHandler
         Runnable* cancel() override {
@@ -93,14 +84,12 @@ class Mutex : supp::Pinned {
         Lock(Mutex* self) : self_{self} {}
 
         // CancellableAwaitable
-        Lock& setCancellationSlot(CancellationSlot slot) noexcept {
+        Lock& setCancellationSlot(CancellationSlot slot) {
             slot_ = slot;
             return *this;
         }
 
-        auto operator co_await() noexcept {
-            return Awaitable{self_, slot_};
-        }
+        auto operator co_await() { return Awaitable{self_, slot_}; }
 
      private:
         Mutex* self_;

@@ -23,7 +23,7 @@ namespace detail {
 // Cancels all child tasks when the first one completes, then waits for all of them to complete.
 template <typename... Ts>
 struct AnyState : CancellationHandler {
-    AnyState(CancellationSlot slot) noexcept : slot_{slot} {}
+    AnyState(CancellationSlot slot) : slot_{slot} {}
 
     std::coroutine_handle<> arrived() {
         auto cur_counter = --counter;
@@ -45,13 +45,9 @@ struct AnyState : CancellationHandler {
         std::get<I>(result).emplace(std::forward<U>(value));
     }
 
-    bool done() {
-        return counter < sizeof...(Ts);
-    }
+    bool done() { return counter < sizeof...(Ts); }
 
-    void connectCancellation() {
-        slot_.installIfConnected(this);
-    }
+    void connectCancellation() { slot_.installIfConnected(this); }
 
     // CancellationHandler
     Runnable* cancel() override {
@@ -82,21 +78,17 @@ struct AnyTask : supp::NonCopyable {
     struct promise_type {
         promise_type(auto&& /*task*/, State* state) : state{state} {}
 
-        auto get_return_object() noexcept {
+        auto get_return_object() {
             return AnyTask{std::coroutine_handle<promise_type>::from_promise(*this)};
         }
 
-        auto initial_suspend() noexcept {
-            return std::suspend_always{};
-        }
+        auto initial_suspend() const { return std::suspend_always{}; }
 
-        auto final_suspend() noexcept {
+        auto final_suspend() const noexcept {
             struct FinalAwaiter {
-                constexpr bool await_ready() const noexcept {
-                    return false;
-                }
+                constexpr bool await_ready() const noexcept { return false; }
 
-                std::coroutine_handle<> await_suspend(std::coroutine_handle<> self) noexcept {
+                std::coroutine_handle<> await_suspend(std::coroutine_handle<> self) {
                     auto* state_copy = state;
                     self.destroy();
                     return state_copy->arrived();
@@ -110,11 +102,9 @@ struct AnyTask : supp::NonCopyable {
             return FinalAwaiter{state};
         }
 
-        void return_value(T value) {
-            state->template returnValue<Index>(std::move(value));
-        }
+        void return_value(T value) { state->template returnValue<Index>(std::move(value)); }
 
-        void unhandled_exception() noexcept {
+        void unhandled_exception() {
             LFATAL("unhandled exception in AnyTask");
             abort();
         }
@@ -125,9 +115,7 @@ struct AnyTask : supp::NonCopyable {
     AnyTask(std::coroutine_handle<> h) : coro{h} {}
     AnyTask(AnyTask&& rhs) noexcept : coro{std::exchange(rhs.coro, nullptr)} {}
 
-    void start() {
-        coro.resume();
-    }
+    void start() { coro.resume(); }
 
     std::coroutine_handle<> coro;
 };
@@ -138,7 +126,7 @@ struct [[nodiscard]] Any : supp::NonCopyable {
     using StateType = AnyState<awaitable_result_t<Tasks>...>;
 
     Any(Tasks... tasks) : tasks_(std::move(tasks)...) {}
-    Any(Any&&) noexcept = default;
+    Any(Any&&) = default;
 
     // CancellableAwaitable
     Any& setCancellationSlot(CancellationSlot slot) {
@@ -146,9 +134,7 @@ struct [[nodiscard]] Any : supp::NonCopyable {
         return *this;
     }
 
-    auto operator co_await() /*&&*/ noexcept {
-        return Awaitable{std::move(tasks_), slot_};
-    }
+    auto operator co_await() /*&&*/ { return Awaitable{std::move(tasks_), slot_}; }
 
  private:
     struct Awaitable : supp::Pinned {
@@ -159,7 +145,7 @@ struct [[nodiscard]] Any : supp::NonCopyable {
                       [&](auto&&... tasks) { return makeTasks(&state_, std::move(tasks)...); },
                       std::move(tasks))) {}
 
-        bool await_ready() noexcept {
+        bool await_ready() {
             // start all tasks
             std::apply([](auto&... task) { (task.start(), ...); }, tasks_);
 
@@ -173,14 +159,14 @@ struct [[nodiscard]] Any : supp::NonCopyable {
             return true;
         }
 
-        void await_suspend(std::coroutine_handle<> caller) noexcept {
+        void await_suspend(std::coroutine_handle<> caller) {
             state_.connectCancellation();
 
             // All tasks have been started, but none of them completed. Register awaiter.
             state_.all_waiter = caller;
         }
 
-        ResultType await_resume() noexcept {
+        ResultType await_resume() {
             return std::apply(
                 [](auto&&... rs) { return ResultType(std::move(rs).get()...); },
                 std::move(state_.result));

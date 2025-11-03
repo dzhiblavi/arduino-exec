@@ -17,7 +17,7 @@ class Timer : public Runnable, private CancellationHandler {
     Timer() = default;
 
     // NOTE: Equivalent to the default constructor.
-    Timer(Timer&&) noexcept : Timer() {}
+    Timer(Timer&&) : Timer() {}
 
     [[nodiscard]] Initiator auto wait(ttime::Duration dur, ErrCode* code) {
         return [this, dur, code](Runnable* cb, CancellationSlot slot = {}) -> Runnable* {
