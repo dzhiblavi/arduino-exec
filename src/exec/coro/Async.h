@@ -176,6 +176,11 @@ class AsyncPromise : public AsyncPromiseBase<T> {
         DASSERT(this->result_);
         this->result_->emplace(std::forward<U>(value));
     }
+
+    void return_value(Result<T> value) noexcept {
+        DASSERT(this->result_);
+        *this->result_ = std::move(value);
+    }
 };
 
 template <>
