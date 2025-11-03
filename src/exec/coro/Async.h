@@ -3,6 +3,8 @@
 #include "exec/Result.h"
 #include "exec/Unit.h"
 #include "exec/cancel.h"
+
+#include "exec/coro/alloc.h"
 #include "exec/coro/traits.h"
 
 #include <supp/ManualLifetime.h>
@@ -15,6 +17,9 @@
 #include <utility>
 
 namespace exec {
+
+template <typename T>
+class Async;
 
 inline constexpr struct ignore_cancellation_t {
 } ignore_cancellation;
@@ -134,8 +139,9 @@ class AsyncPromiseBase : CancellationHandler {
         up_slot_.installIfConnected(this);
     }
 
-    void* operator new(size_t size) { return ::operator new(size); }
-    void operator delete(void* ptr, size_t size) { ::operator delete(ptr, size); }
+    void* operator new(size_t size) noexcept { return alloc::allocate(size, std::nothrow); }
+    void operator delete(void* ptr, size_t size) { alloc::deallocate(ptr, size); }
+    static auto get_return_object_on_allocation_failure() { return Async<T>{}; }
 
  protected:
     Result<T>* result_ = nullptr;
@@ -219,22 +225,28 @@ class [[nodiscard]] Async : supp::NonCopyable {
             Awaitable(std::coroutine_handle<promise_type> coroutine)
                 : coroutine_{std::move(coroutine)} {}
 
-            bool await_ready() const noexcept { return coroutine_.done(); }
+            bool await_ready() const noexcept { return !coroutine_ || coroutine_.done(); }
 
             std::coroutine_handle<> await_suspend(std::coroutine_handle<> caller) noexcept {
+                DASSERT(coroutine_);
                 auto& promise = coroutine_.promise();
                 promise.suspend(caller, &result_);
                 return coroutine_;
             }
 
-            Result<T> await_resume() noexcept { return std::move(result_); }
+            Result<T> await_resume() noexcept {
+                if (!coroutine_) {
+                    result_.setError(ErrCode::OutOfMemory);
+                }
+
+                return std::move(result_);
+            }
 
             std::coroutine_handle<promise_type> coroutine_;
             Result<T> result_;
         };
 
-        // co_await is a destructive operation for Async<T>
-        DASSERT(coroutine_, "Async<T> has been consumed");
+        // nullptr coroutine means OutOfMemory
         return Awaitable{std::exchange(coroutine_, nullptr)};
     }
 

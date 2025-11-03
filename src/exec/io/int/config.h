@@ -6,9 +6,9 @@
 
 #define EXEC_INT_MANUAL
 
-#elif defined(EXEC_ARDUINO_NANO)
+#elif defined(EXEC_ARDUINO_AVR)
 
-#define EXEC_INT_ARDUINO_NANO
+#define EXEC_INT_ARDUINO_AVR
 
 #elif defined(EXEC_ARDUINO_ESP8266)
 

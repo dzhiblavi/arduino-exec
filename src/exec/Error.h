@@ -6,6 +6,7 @@ namespace exec {
 
 enum class ErrCode : uint8_t {
     Unknown = 0,
+    OutOfMemory,
     Cancelled,
     Success,
 };

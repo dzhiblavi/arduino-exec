@@ -1,6 +1,6 @@
 #include "exec/io/int/config.h" // IWYU pragma: keep
 
-#if defined(EXEC_INT_ARDUINO_NANO)
+#if defined(EXEC_INT_ARDUINO_AVR)
 
 #include "exec/io/int/interrupts.h"
 

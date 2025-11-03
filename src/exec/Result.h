@@ -19,8 +19,17 @@ class Result {  // NOLINT
     }
 
     template <typename U>
+    requires(!std::same_as<std::remove_reference_t<U>, Result>)
     Result(U&& val) : code_{ErrCode::Success} {  // NOLINT
         new (ptr()) T(std::forward<U>(val));
+    }
+
+    Result(Result&& r) : code_{r.code_} {  // NOLINT
+        if (!hasValue()) {
+            return;
+        }
+
+        new (ptr()) T(std::move(r).get());
     }
 
     Result(const Result& r) : code_{r.code_} {  // NOLINT
@@ -40,6 +49,7 @@ class Result {  // NOLINT
             if (hasValue()) {
                 release();
             }
+            code_ = r.code_;
         } else {  // r.hasValue()
             if (hasValue()) {
                 get() = r.get();
@@ -52,12 +62,26 @@ class Result {  // NOLINT
         return *this;
     }
 
-    Result(Result&& r) : code_{r.code_} {  // NOLINT
-        if (!hasValue()) {
-            return;
+    Result& operator=(Result&& r) noexcept {
+        if (this == &r) {
+            return *this;
         }
 
-        new (ptr()) T(std::move(r).get());
+        if (!r.hasValue()) {
+            if (hasValue()) {
+                release();
+            }
+            code_ = std::exchange(r.code_, ErrCode::Unknown);
+        } else {  // r.hasValue()
+            if (hasValue()) {
+                get() = std::move(r).get();
+            } else {  // !hasValue()
+                code_ = ErrCode::Success;
+                new (ptr()) T(std::move(r).get());
+            }
+        }
+
+        return *this;
     }
 
     ~Result() noexcept {
@@ -88,21 +112,13 @@ class Result {  // NOLINT
         }
     }
 
-    bool hasValue() const noexcept {
-        return code_ == ErrCode::Success;
-    }
+    bool hasValue() const noexcept { return code_ == ErrCode::Success; }
 
-    explicit operator bool() const noexcept {
-        return hasValue();
-    }
+    explicit operator bool() const noexcept { return hasValue(); }
 
-    T& operator*() noexcept {
-        return get();
-    }
+    T& operator*() noexcept { return get(); }
 
-    const T& operator*() const noexcept {
-        return get();
-    }
+    const T& operator*() const noexcept { return get(); }
 
     T get() && noexcept {
         DASSERT(hasValue());
@@ -121,9 +137,7 @@ class Result {  // NOLINT
         return *ptr();
     }
 
-    ErrCode code() const noexcept {
-        return code_;
-    }
+    ErrCode code() const noexcept { return code_; }
 
  private:
     void release() {
@@ -132,13 +146,9 @@ class Result {  // NOLINT
         code_ = ErrCode::Unknown;
     }
 
-    T* ptr() noexcept {
-        return reinterpret_cast<T*>(data_);
-    }
+    T* ptr() noexcept { return reinterpret_cast<T*>(data_); }
 
-    const T* ptr() const noexcept {
-        return reinterpret_cast<const T*>(data_);
-    }
+    const T* ptr() const noexcept { return reinterpret_cast<const T*>(data_); }
 
     alignas(T) uint8_t data_[sizeof(T)] /* uninitialized */;
     ErrCode code_ = ErrCode::Unknown;
