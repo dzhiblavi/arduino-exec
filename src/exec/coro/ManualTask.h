@@ -31,9 +31,8 @@ struct ManualPromise {
         abort();
     }
 
-    template <typename U>
-    void return_value(U&& value) {
-        result_.emplace(std::forward<U>(value));
+    void return_value(Result<T> res) {
+        result_ = std::move(res);
     }
 
     const supp::ManualLifetime<T>& result() const {
@@ -41,7 +40,7 @@ struct ManualPromise {
     }
 
  private:
-    supp::ManualLifetime<T> result_;
+    Result<T> result_;
 };
 
 }  // namespace detail
@@ -78,7 +77,7 @@ class ManualTask {
         return coroutine_.done();
     }
 
-    const supp::ManualLifetime<T>& result() const {
+    const Result<T>& result() const {
         DASSERT(coroutine_);
         return coroutine_.promise().result();
     }

@@ -2,6 +2,7 @@
 #include <exec/coro/ManualTask.h>
 #include <exec/coro/par/all.h>
 #include <exec/coro/sync/Event.h>
+#include <exec/Result.h>
 
 #include <utest/utest.h>
 

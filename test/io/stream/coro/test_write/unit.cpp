@@ -89,9 +89,9 @@ TEST_F(t_write, test_connects_cancellation) {
 
     fill(10);
 
-    auto coro = makeManualTask([&](CancellationSlot slot) -> Async<> {
-        co_await write(&print, buf, 4).setCancellationSlot(slot);
-    }(sig.slot()));
+    auto coro = makeManualTask([&]() -> Async<> {
+        co_await write(&print, buf, 4).setCancellationSlot(sig.slot());
+    }());
 
     TEST_ASSERT_FALSE(sig.hasHandler());
     coro.start();

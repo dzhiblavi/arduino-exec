@@ -5,7 +5,7 @@
 
 namespace exec {
 
-template <typename Interface, typename Implementation>
+template <typename Interface, typename Self>
 class ServiceBase : public Service {
  public:
     ServiceBase() {
@@ -13,7 +13,7 @@ class ServiceBase : public Service {
             os->addService(this);
         }
 
-        setService<Interface>(static_cast<Implementation*>(this));
+        setService<Interface>(static_cast<Self*>(this));
     }
 };
 

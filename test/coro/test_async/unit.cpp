@@ -33,7 +33,7 @@ TEST(async_co_return_void) {
     };
 
     auto main = [&]() -> Async<> {
-        Unit u = co_await task();
+        auto u = co_await task();
         (void)u;
         done = true;
     };
@@ -53,8 +53,9 @@ TEST(async_co_return_value) {
     };
 
     auto main = [&]() -> Async<> {
-        int x = co_await task();
-        TEST_ASSERT_EQUAL(239, x);
+        auto x = co_await task();
+        TEST_ASSERT_TRUE(x.hasValue());
+        TEST_ASSERT_EQUAL(239, *x);
         done = true;
     };
 
@@ -63,6 +64,65 @@ TEST(async_co_return_value) {
     m.start();
     TEST_ASSERT_TRUE(m.done());
     TEST_ASSERT_TRUE(done);
+}
+
+TEST(async_cancellation) {
+    Event e;
+    CancellationSignal sig;
+
+    auto child = [&]() -> Async<Unit> {  //
+        auto ec = co_await e.wait();
+        TEST_ASSERT_EQUAL(ErrCode::Cancelled, ec);
+    };
+
+    auto parent = [&]() -> Async<int> {
+        auto ec = co_await child();
+
+        // success because no co_awaits after cancelled operation
+        TEST_ASSERT_EQUAL(ErrCode::Success, ec.code());
+
+        ec = co_await child();  // will finalize here
+        TEST_FAIL_MESSAGE("should've not reached this point");
+
+        co_return 10;
+    };
+
+    auto task = makeManualTask(parent().setCancellationSlot(sig.slot()));
+
+    task.start();
+    TEST_ASSERT_FALSE(task.done());
+
+    sig.emit();
+    TEST_ASSERT_TRUE(task.done());
+}
+
+TEST(async_cancellation_ignored) {
+    Event e;
+    CancellationSignal sig;
+
+    auto child = [&]() -> Async<Unit> {  //
+        auto ec = co_await e.wait();
+        TEST_ASSERT_EQUAL(ErrCode::Success, ec);
+    };
+
+    auto parent = [&]() -> Async<> {
+        auto guard = co_await ignore_cancellation;
+
+        auto ec = co_await child();
+        TEST_ASSERT_EQUAL(ErrCode::Success, ec.code());
+    };
+
+    auto task = makeManualTask(parent().setCancellationSlot(sig.slot()));
+
+    task.start();
+    TEST_ASSERT_FALSE(task.done());
+
+    sig.emit();
+    TEST_ASSERT_FALSE(sig.hasHandler());
+    TEST_ASSERT_FALSE(task.done());
+
+    e.fireOnce();
+    TEST_ASSERT_TRUE(task.done());
 }
 
 TEST(async_sync_does_not_connect_cancellation) {
@@ -75,6 +135,7 @@ TEST(async_sync_does_not_connect_cancellation) {
     auto task = makeManualTask(make_task().setCancellationSlot(sig.slot()));
     task.start();
 
+    TEST_ASSERT_TRUE(task.done());
     TEST_ASSERT_FALSE(sig.hasHandler());
 }
 
@@ -108,143 +169,24 @@ TEST(async_cancel_while_blocked) {
     TEST_ASSERT_FALSE(task.done());
 
     task.start();  // installs cancellation and blocks
-    sig.emit();    // will cancel event.wait()
-    TEST_ASSERT_TRUE(task.done());
-}
-
-TEST(async_extract_cancellation_slot_with_signal) {
-    CancellationSignal sig;
-
-    auto make_task = [&]() -> Async<> {  //
-        auto slot = co_await extract_cancellation_slot;
-        TEST_ASSERT_TRUE(slot.isConnected());
-    };
-
-    auto task = makeManualTask(make_task().setCancellationSlot(sig.slot()));
-    task.start();
-    TEST_ASSERT_TRUE(task.done());
-}
-
-TEST(async_extract_cancellation_slot_without_signal) {
-    auto make_task = [&]() -> Async<> {  //
-        auto slot = co_await extract_cancellation_slot;
-        TEST_ASSERT_FALSE(slot.isConnected());
-    };
-
-    auto task = makeManualTask(make_task());
-    task.start();
-    TEST_ASSERT_TRUE(task.done());
-}
-
-TEST(async_no_automatic_cancellation_when_slot_is_extracted) {
-    Event event;
-    CancellationSignal sig;
-
-    auto make_task = [&]() -> Async<> {  //
-        [[maybe_unused]] auto slot = co_await extract_cancellation_slot;
-        co_await event.wait();
-    };
-    auto task = makeManualTask(make_task().setCancellationSlot(sig.slot()));
-
-    sig.emit();  // not yet started
     TEST_ASSERT_FALSE(task.done());
-
-    task.start();  // installs (missing) cancellation and blocks
-    sig.emit();    // will do nothing
-    TEST_ASSERT_FALSE(task.done());
-
-    event.fireOnce();
+    sig.emit();  // will cancel event.wait()
     TEST_ASSERT_TRUE(task.done());
-}
-
-TEST(async_replace_cancellation_slot) {
-    Event event;
-    CancellationSignal sig1;
-    CancellationSignal sig2;
-    ErrCode expected = ErrCode::Unknown;
-
-    auto make_task = [&]() -> Async<> {  //
-        [[maybe_unused]] auto extracted = co_await replace_cancellation_slot{sig2.slot()};
-        auto c = co_await event.wait();
-        TEST_ASSERT_EQUAL(expected, c);
-    };
-    auto task = makeManualTask(make_task().setCancellationSlot(sig1.slot()));
-
-    task.start();  // installs sig2 cancellation and blocks
-    sig1.emit();   // will do nothing
-    TEST_ASSERT_FALSE(task.done());
-
-    SECTION("fire still completes") {
-        expected = ErrCode::Success;
-        event.fireOnce();
-        TEST_ASSERT_TRUE(task.done());
-    }
-
-    SECTION("cancell through new slot") {
-        expected = ErrCode::Cancelled;
-        sig2.emit();
-        TEST_ASSERT_TRUE(task.done());
-    }
-}
-
-TEST(async_use_extracted_slot_manually) {
-    Event event;
-    CancellationSignal sig;
-    ErrCode expected1 = ErrCode::Unknown;
-    ErrCode expected2 = ErrCode::Unknown;
-
-    auto make_task = [&]() -> Async<> {  //
-        auto slot = co_await extract_cancellation_slot;
-
-        // wait with no cancellation
-        auto c1 = co_await event.wait();
-        TEST_ASSERT_EQUAL(expected1, c1);
-
-        // wait with manually attached cancellation
-        auto c2 = co_await event.wait().setCancellationSlot(slot);
-        TEST_ASSERT_EQUAL(expected2, c2);
-    };
-    auto task = makeManualTask(make_task().setCancellationSlot(sig.slot()));
-
-    task.start();  // blocks on uncancellable event.wait()
-    sig.emit();    // will do nothing (otherwise test fails due to Unknown expected code)
-    TEST_ASSERT_FALSE(task.done());
-
-    SECTION("both complete") {
-        expected1 = ErrCode::Success;
-        expected2 = ErrCode::Success;
-
-        event.fireOnce();
-        TEST_ASSERT_FALSE(task.done());
-
-        event.fireOnce();
-        TEST_ASSERT_TRUE(task.done());
-    }
-
-    SECTION("second operation is cancelled") {
-        expected1 = ErrCode::Success;
-        expected2 = ErrCode::Cancelled;
-
-        event.fireOnce();  // release the uncancellable wait
-        TEST_ASSERT_FALSE(task.done());
-
-        sig.emit();  // now the slot is installed into the second wait
-        TEST_ASSERT_TRUE(task.done());
-    }
 }
 
 TEST(async_chain_cancellation) {
     Event event;
     CancellationSignal sig;
-    ErrCode expected = ErrCode::Unknown;
 
-    auto task = [&]() -> Async<ErrCode> {  //
-        co_return co_await event.wait();
+    auto task = [&]() -> Async<> {  //
+        co_await event.wait();
     };
 
     auto main = [&]() -> Async<> {
         auto c = co_await task();
-        TEST_ASSERT_EQUAL(expected, c);
+
+        // success in either case because no co_awaits follow the cancelled operation
+        TEST_ASSERT_EQUAL(ErrCode::Success, c.code());
     };
 
     auto t = makeManualTask(main().setCancellationSlot(sig.slot()));
@@ -253,17 +195,136 @@ TEST(async_chain_cancellation) {
     TEST_ASSERT_FALSE(t.done());  // task is blocked on event.wait()
 
     SECTION("no cancellation") {
-        expected = ErrCode::Success;
         event.fireOnce();
         TEST_ASSERT_TRUE(t.done());
     }
 
     SECTION("inner operation is cancelled") {
-        expected = ErrCode::Cancelled;
         sig.emit();
         TEST_ASSERT_TRUE(t.done());
     }
 }
+
+// TEST(async_extract_cancellation_slot_with_signal) {
+// CancellationSignal sig;
+
+// auto make_task = [&]() -> Async<> {  //
+// auto slot = co_await extract_cancellation_slot;
+// TEST_ASSERT_TRUE(slot.isConnected());
+//};
+
+// auto task = makeManualTask(make_task().setCancellationSlot(sig.slot()));
+// task.start();
+// TEST_ASSERT_TRUE(task.done());
+//}
+
+// TEST(async_extract_cancellation_slot_without_signal) {
+// auto make_task = [&]() -> Async<> {  //
+// auto slot = co_await extract_cancellation_slot;
+// TEST_ASSERT_FALSE(slot.isConnected());
+//};
+
+// auto task = makeManualTask(make_task());
+// task.start();
+// TEST_ASSERT_TRUE(task.done());
+//}
+
+// TEST(async_no_automatic_cancellation_when_slot_is_extracted) {
+// Event event;
+// CancellationSignal sig;
+
+// auto make_task = [&]() -> Async<> {  //
+//[[maybe_unused]] auto slot = co_await extract_cancellation_slot;
+// co_await event.wait();
+//};
+// auto task = makeManualTask(make_task().setCancellationSlot(sig.slot()));
+
+// sig.emit();  // not yet started
+// TEST_ASSERT_FALSE(task.done());
+
+// task.start();  // installs (missing) cancellation and blocks
+// sig.emit();    // will do nothing
+// TEST_ASSERT_FALSE(task.done());
+
+// event.fireOnce();
+// TEST_ASSERT_TRUE(task.done());
+//}
+
+// TEST(async_replace_cancellation_slot) {
+// Event event;
+// CancellationSignal sig1;
+// CancellationSignal sig2;
+// ErrCode expected = ErrCode::Unknown;
+
+// auto make_task = [&]() -> Async<> {  //
+//[[maybe_unused]] auto extracted = co_await replace_cancellation_slot{sig2.slot()};
+// auto c = co_await event.wait();
+// TEST_ASSERT_EQUAL(expected, c);
+//};
+// auto task = makeManualTask(make_task().setCancellationSlot(sig1.slot()));
+
+// task.start();  // installs sig2 cancellation and blocks
+// sig1.emit();   // will do nothing
+// TEST_ASSERT_FALSE(task.done());
+
+// SECTION("fire still completes") {
+// expected = ErrCode::Success;
+// event.fireOnce();
+// TEST_ASSERT_TRUE(task.done());
+//}
+
+// SECTION("cancell through new slot") {
+// expected = ErrCode::Cancelled;
+// sig2.emit();
+// TEST_ASSERT_TRUE(task.done());
+//}
+//}
+
+// TEST(async_use_extracted_slot_manually) {
+// Event event;
+// CancellationSignal sig;
+// ErrCode expected1 = ErrCode::Unknown;
+// ErrCode expected2 = ErrCode::Unknown;
+
+// auto make_task = [&]() -> Async<> {  //
+// auto slot = co_await extract_cancellation_slot;
+
+//// wait with no cancellation
+// auto c1 = co_await event.wait();
+// TEST_ASSERT_EQUAL(expected1, c1);
+
+//// wait with manually attached cancellation
+// auto c2 = co_await event.wait().setCancellationSlot(slot);
+// TEST_ASSERT_EQUAL(expected2, c2);
+//};
+// auto task = makeManualTask(make_task().setCancellationSlot(sig.slot()));
+
+// task.start();  // blocks on uncancellable event.wait()
+// sig.emit();    // will do nothing (otherwise test fails due to Unknown expected code)
+// TEST_ASSERT_FALSE(task.done());
+
+// SECTION("both complete") {
+// expected1 = ErrCode::Success;
+// expected2 = ErrCode::Success;
+
+// event.fireOnce();
+// TEST_ASSERT_FALSE(task.done());
+
+// event.fireOnce();
+// TEST_ASSERT_TRUE(task.done());
+//}
+
+// SECTION("second operation is cancelled") {
+// expected1 = ErrCode::Success;
+// expected2 = ErrCode::Cancelled;
+
+// event.fireOnce();  // release the uncancellable wait
+// TEST_ASSERT_FALSE(task.done());
+
+// sig.emit();  // now the slot is installed into the second wait
+// TEST_ASSERT_TRUE(task.done());
+//}
+//}
 
 }  // namespace exec
 

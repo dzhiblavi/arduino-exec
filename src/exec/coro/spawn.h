@@ -20,28 +20,19 @@ template <typename T>
 struct SpawnPromise {
     using coroutine_handle_t = std::coroutine_handle<SpawnPromise<T>>;
 
-    auto get_return_object() noexcept {
-        return coroutine_handle_t::from_promise(*this);
-    }
+    auto get_return_object() noexcept { return coroutine_handle_t::from_promise(*this); }
 
-    auto initial_suspend() noexcept {
-        return std::suspend_always{};
-    }
+    auto initial_suspend() noexcept { return std::suspend_always{}; }
 
     auto final_suspend() noexcept {
         struct Finalizer {
-            constexpr bool await_ready() const noexcept {
-                return false;
-            }
+            constexpr bool await_ready() const noexcept { return false; }
 
             void await_suspend(coroutine_handle_t coroutine) noexcept {
-                LTRACE(F("deallocating SpawnTask"));
                 delete coroutine.promise().owner_;
             }
 
-            void await_resume() noexcept {
-                __builtin_unreachable();
-            }
+            void await_resume() noexcept { __builtin_unreachable(); }
         };
 
         return Finalizer{};
@@ -49,7 +40,7 @@ struct SpawnPromise {
 
     void return_void() noexcept {}
 
-    auto yield_value(T value) noexcept {
+    auto yield_value(auto&& value) noexcept {
         (void)value;
         return final_suspend();
     }
@@ -63,16 +54,12 @@ struct SpawnPromise {
 };
 
 template <typename T>
-struct SpawnTask : Runnable, supp::Pinned {
+struct SpawnTask : Runnable, supp::NonCopyable {
     using promise_type = SpawnPromise<T>;
     using coroutine_handle_t = std::coroutine_handle<promise_type>;
 
     SpawnTask(coroutine_handle_t coro) noexcept : coro_{coro} {}
     SpawnTask(SpawnTask&& r) noexcept : coro_{std::exchange(r.coro_, nullptr)} {}
-
-    // not copyable
-    SpawnTask(const SpawnTask&) = delete;
-    SpawnTask& operator=(const SpawnTask&) = delete;
 
     ~SpawnTask() noexcept {
         if (!coro_) {

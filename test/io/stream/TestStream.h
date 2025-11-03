@@ -9,15 +9,15 @@ namespace exec::test {
 struct Stream : public ::exec::Stream {
     virtual ~Stream() = default;
 
-    int available() override {
+    int available() {
         return static_cast<int>(buf.size());
     }
 
-    int read() override {
+    int read() {
         return buf.empty() ? -1 : buf.pop();
     }
 
-    int peek() override {
+    int peek() {
         return buf.front();
     }
 
