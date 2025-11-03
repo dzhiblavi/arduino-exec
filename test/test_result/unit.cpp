@@ -51,7 +51,7 @@ struct t_result {
 
     template <std::same_as<Op>... Ops>
     void check(Ops... ops) {
-        auto check = [&](Op op) {
+        [[maybe_unused]] auto check = [&](Op op) {
             TEST_ASSERT_FALSE(this->ops.empty());
             auto actual = this->ops.pop();
             TEST_ASSERT_EQUAL(op.tag, actual.tag);
@@ -300,8 +300,7 @@ TEST_F(t_result, result_move_assign) {
             Op{-1, Destroy},
             Op{20, MoveAssign},
             Op{-1, Destroy},
-            Op{10, Destroy}
-        );
+            Op{10, Destroy});
     }
 }
 
