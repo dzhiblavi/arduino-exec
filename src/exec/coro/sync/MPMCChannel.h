@@ -21,13 +21,9 @@ class MPMCChannel {
  public:
     MPMCChannel() = default;
 
-    auto receive() {
-        return Receive{this};
-    }
+    auto receive() { return Receive{this}; }
 
-    auto send(T& value) {
-        return Send{this, &value};
-    }
+    auto send(T& value) { return Send{this, &value}; }
 
  private:
     struct Awaitable : CancellationHandler, supp::IntrusiveListNode {
@@ -85,12 +81,6 @@ class MPMCChannel {
             slot.clearIfConnected();
             value.emplace(std::move(*val));
             caller.resume();
-        }
-
-        // CancellableAwaitable
-        auto& setCancellationSlot(CancellationSlot a_slot) {
-            slot = a_slot;
-            return *this;
         }
 
      private:
@@ -159,9 +149,7 @@ class MPMCChannel {
             return *this;
         }
 
-        auto operator co_await() {
-            return ReceiveAwaitable{self_, slot_};
-        }
+        auto operator co_await() { return ReceiveAwaitable{self_, slot_}; }
 
      private:
         MPMCChannel* self_;
@@ -179,9 +167,7 @@ class MPMCChannel {
             return *this;
         }
 
-        auto operator co_await() {
-            return SendAwaitable{self_, value, slot_};
-        }
+        auto operator co_await() { return SendAwaitable{self_, value, slot_}; }
 
      private:
         MPMCChannel* self_;

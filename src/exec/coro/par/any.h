@@ -23,21 +23,51 @@ namespace detail {
 // Cancels all child tasks when the first one completes, then waits for all of them to complete.
 template <typename... Ts>
 struct AnyState : CancellationHandler {
+    enum class CancelState : uint8_t {
+        None = 0,
+        External,
+        Internal,
+    };
+
     AnyState(CancellationSlot slot) : slot_{slot} {}
 
     std::coroutine_handle<> arrived() {
-        auto cur_counter = --counter;
+        const size_t cur_counter = --counter;
 
-        if (all_waiter != std::noop_coroutine() && cur_counter == sizeof...(Ts) - 1) {
-            // Cancel only in both statements are true:
-            // 1. all_waiter is present. That means that all tasks have been started
-            //    and its OK to call their cancellation.
-            // 2. Current task is the first that has completed.
-            cancel();
+        if (all_waiter == nullptr) {
+            return std::noop_coroutine();
         }
 
-        // do not resume until all tasks are successfully cancelled
-        return cur_counter == 0 ? all_waiter : std::noop_coroutine();
+        const bool first = cur_counter == sizeof...(Ts) - 1;
+
+        if (first) {
+            if (cancel_state_ != CancelState::None) {
+                // External cancellation. The last operation should resume the caller
+                return std::noop_coroutine();
+            }
+
+            cancel_state_ = CancelState::Internal;  // disable caller resumption
+            cancelSync();
+
+            if (counter == 0) {
+                return std::exchange(all_waiter, nullptr);
+            }
+
+            cancel_state_ = CancelState::External;  // re-enable caller resumption
+            return std::noop_coroutine();
+        } else {
+            if (cur_counter > 0) {
+                // Not the last task
+                return std::noop_coroutine();
+            }
+
+            if (cancel_state_ == CancelState::Internal) {
+                // First task has blocked resumption
+                return std::noop_coroutine();
+            }
+
+            return std::exchange(all_waiter, nullptr);
+        }
     }
 
     template <size_t I, typename U>
@@ -46,18 +76,33 @@ struct AnyState : CancellationHandler {
     }
 
     bool done() { return counter < sizeof...(Ts); }
+    bool complete() { return counter == 0; }
 
     void connectCancellation() { slot_.installIfConnected(this); }
 
     // CancellationHandler
     Runnable* cancel() override {
+        DASSERT(cancel_state_ == CancelState::None);
+        cancel_state_ = CancelState::External;
+        slot_.clearIfConnected();
+
+        for (auto& sig : child_signals_) {
+            sig.emit();
+
+            if (all_waiter == nullptr) {
+                break;
+            }
+        }
+
+        return noop;
+    }
+
+    void cancelSync() {
         slot_.clearIfConnected();
 
         for (auto& sig : child_signals_) {
             sig.emit();
         }
-
-        return noop;
     }
 
     template <size_t I>
@@ -66,11 +111,12 @@ struct AnyState : CancellationHandler {
     }
 
     uint8_t counter = sizeof...(Ts);
-    std::coroutine_handle<> all_waiter = std::noop_coroutine();
+    std::coroutine_handle<> all_waiter = nullptr;
     std::tuple<supp::ManualLifetime<Ts>...> result{};
 
     CancellationSlot slot_;
     std::array<CancellationSignal, sizeof...(Ts)> child_signals_;
+    CancelState cancel_state_ = CancelState::None;
 };
 
 template <typename T, size_t Index, typename State>
@@ -154,13 +200,17 @@ struct [[nodiscard]] Any : supp::NonCopyable {
                 return false;
             }
 
-            // operation is complete, cancel all other tasks
-            state_.cancel();
-            return true;
+            // operation is complete, cancel all tasks
+            state_.cancelSync();
+
+            // wait for them to complete if needed
+            return state_.complete();
         }
 
         void await_suspend(std::coroutine_handle<> caller) {
-            state_.connectCancellation();
+            if (!state_.complete()) {
+                state_.connectCancellation();
+            }
 
             // All tasks have been started, but none of them completed. Register awaiter.
             state_.all_waiter = caller;

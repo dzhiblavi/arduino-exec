@@ -16,7 +16,9 @@ auto wait(ttime::Duration d) {
     struct [[nodiscard]] Awaitable : Runnable, CancellationHandler, supp::NonCopyable {
         Awaitable(ttime::Duration d, CancellationSlot slot) : d{d}, slot_{slot} {}
 
-        bool await_ready() { return d.micros() == 0; }
+        bool await_ready() {
+            return d.micros() == 0;
+        }
 
         void await_suspend(std::coroutine_handle<> awaiter) {
             slot_.installIfConnected(this);

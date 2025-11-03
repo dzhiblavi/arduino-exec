@@ -32,7 +32,11 @@ auto yield() {
         std::coroutine_handle<> caller;
     };
 
-    return Awaitable{};
+    struct Op {
+        auto operator co_await() const { return Awaitable{}; }
+    };
+
+    return Op{};
 }
 
 }  // namespace exec

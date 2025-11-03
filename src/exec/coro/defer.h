@@ -29,11 +29,16 @@ auto defer(ttime::Duration d) {
             return noop;
         }
 
+        const ttime::Duration d;
         std::coroutine_handle<> caller;
+    };
+
+    struct Op {
+        auto operator co_await() { return Awaitable{d}; }
         const ttime::Duration d;
     };
 
-    return Awaitable{d};
+    return Op{d};
 }
 
 }  // namespace exec
