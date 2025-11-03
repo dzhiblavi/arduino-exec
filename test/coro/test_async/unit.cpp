@@ -10,8 +10,6 @@ bool fail_allocation = false;
 namespace exec::alloc {
 
 void* allocate(size_t size, const std::nothrow_t&) noexcept {
-    auto [fr] = exec::getMemoryUsage();
-    LINFO("free ram: ", fr);
     return fail_allocation ? nullptr : malloc(size);
 }
 
@@ -245,6 +243,38 @@ TEST(async_allocation_failure) {
     TEST_ASSERT_TRUE(done);
     TEST_ASSERT_TRUE(t.done());
     fail_allocation = false;
+}
+
+TEST(async_multiple_suspension_points) {
+    Event event;
+    CancellationSignal sig;
+    int i = 0;
+
+    auto main = [&]() -> Async<> {
+        i = 1;
+        ErrCode c{};
+
+        c = co_await event.wait();
+        i = 2;
+        TEST_ASSERT_EQUAL(ErrCode::Success, c);
+
+        c = co_await event.wait();  // cancel
+        i = 3;
+        TEST_ASSERT_EQUAL(ErrCode::Cancelled, c);
+
+        c = co_await event.wait();
+        i = 4;
+        TEST_FAIL_MESSAGE("should not be reached");
+    };
+
+    auto t = makeManualTask(main().setCancellationSlot(sig.slot()));
+    t.start();
+
+    event.fireOnce();
+    sig.emit();
+
+    TEST_ASSERT_TRUE(t.done());
+    TEST_ASSERT_EQUAL(3, i);
 }
 
 }  // namespace exec
