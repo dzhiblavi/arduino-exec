@@ -20,15 +20,43 @@ namespace detail {
 
 template <typename... Ts>
 struct AllState : CancellationHandler {
+    static constexpr size_t Children = sizeof...(Ts);
+
     AllState(CancellationSlot slot) : slot_{slot} {}
 
     std::coroutine_handle<> arrived() {
         if (--counter == 0) {
             slot_.clearIfConnected();
-            return all_waiter;
+            return caller;
         }
 
         return std::noop_coroutine();
+    }
+
+    void await_suspend(std::coroutine_handle<> a_caller) {
+        slot_.installIfConnected(this);
+        caller = a_caller;
+    }
+
+    // CancellationHandler
+    Runnable* cancel() override {
+        DASSERT(caller != nullptr);
+
+        slot_.clearIfConnected();
+        auto a_caller = std::exchange(caller, std::noop_coroutine());
+
+        for (auto& sig : child_signals_) {
+            // cannot complete because caller is extracted
+            sig.emit();
+        }
+
+        if (all_done()) {
+            a_caller.resume();
+        } else {
+            caller = a_caller;
+        }
+
+        return noop;
     }
 
     template <size_t I, typename U>
@@ -36,32 +64,19 @@ struct AllState : CancellationHandler {
         std::get<I>(result).emplace(std::forward<U>(value));
     }
 
-    bool done() { return counter == 0; }
-
-    void connectCancellation() { slot_.installIfConnected(this); }
-
-    // CancellationHandler
-    Runnable* cancel() override {
-        slot_.clearIfConnected();
-
-        for (auto& sig : child_signals_) {
-            sig.emit();
-        }
-
-        return noop;
-    }
-
     template <size_t I>
     CancellationSlot getSlot() {
         return child_signals_[I].slot();
     }
 
-    uint8_t counter = sizeof...(Ts);
-    std::coroutine_handle<> all_waiter = std::noop_coroutine();
+    bool all_done() const { return counter == 0; }
+
+    uint8_t counter = Children;
+    std::coroutine_handle<> caller = std::noop_coroutine();
     std::tuple<supp::ManualLifetime<Ts>...> result{};
 
     CancellationSlot slot_;
-    std::array<CancellationSignal, sizeof...(Ts)> child_signals_;
+    std::array<CancellationSignal, Children> child_signals_;
 };
 
 template <typename T, size_t Index, typename State>
@@ -150,19 +165,11 @@ struct [[nodiscard]] All : supp::NonCopyable {
                       std::move(tasks))) {}
 
         bool await_ready() {
-            // start all tasks
             std::apply([](auto&... task) { (task.start(), ...); }, tasks_);
-
-            // suspend only if not not all tasks have been completed
-            return state_.done();
+            return state_.all_done();
         }
 
-        void await_suspend(std::coroutine_handle<> caller) {
-            state_.connectCancellation();
-
-            // All tasks have been started, but not all completed. Register awaiter.
-            state_.all_waiter = caller;
-        }
+        void await_suspend(std::coroutine_handle<> caller) { state_.await_suspend(caller); }
 
         ResultType await_resume() {
             return std::apply(

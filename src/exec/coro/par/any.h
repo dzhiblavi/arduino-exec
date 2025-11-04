@@ -23,51 +23,68 @@ namespace detail {
 // Cancels all child tasks when the first one completes, then waits for all of them to complete.
 template <typename... Ts>
 struct AnyState : CancellationHandler {
-    enum class CancelState : uint8_t {
-        None = 0,
-        External,
-        Internal,
-    };
+    static constexpr size_t Children = sizeof...(Ts);
 
     AnyState(CancellationSlot slot) : slot_{slot} {}
 
     std::coroutine_handle<> arrived() {
         const size_t cur_counter = --counter;
 
-        if (all_waiter == nullptr) {
+        if (caller == nullptr) {
             return std::noop_coroutine();
         }
 
-        const bool first = cur_counter == sizeof...(Ts) - 1;
-
+        const bool first = cur_counter == Children - 1;
         if (first) {
-            if (cancel_state_ != CancelState::None) {
-                // External cancellation. The last operation should resume the caller
-                return std::noop_coroutine();
-            }
-
-            cancel_state_ = CancelState::Internal;  // disable caller resumption
-            cancelSync();
-
-            if (counter == 0) {
-                return std::exchange(all_waiter, nullptr);
-            }
-
-            cancel_state_ = CancelState::External;  // re-enable caller resumption
-            return std::noop_coroutine();
-        } else {
-            if (cur_counter > 0) {
-                // Not the last task
-                return std::noop_coroutine();
-            }
-
-            if (cancel_state_ == CancelState::Internal) {
-                // First task has blocked resumption
-                return std::noop_coroutine();
-            }
-
-            return std::exchange(all_waiter, nullptr);
+            return doCancel();
         }
+
+        return cur_counter == 0 ? std::exchange(caller, nullptr) : std::noop_coroutine();
+    }
+
+    bool await_ready() {
+        if (!any_done()) {
+            return false;
+        }
+
+        for (auto& sig : child_signals_) {
+            sig.emit();
+        }
+
+        return all_done();
+    }
+
+    void await_suspend(std::coroutine_handle<> a_caller) {
+        if (!any_done()) {
+            slot_.installIfConnected(this);
+        }
+
+        caller = a_caller;
+    }
+
+    // CancellationHandler
+    Runnable* cancel() override {
+        doCancel().resume();
+        return noop;
+    }
+
+    std::coroutine_handle<> doCancel() {
+        DASSERT(caller != nullptr);
+
+        slot_.clearIfConnected();
+        auto a_caller = std::exchange(caller, nullptr);
+
+        for (auto& sig : child_signals_) {
+            // cannot complete because caller is extracted
+            sig.emit();
+        }
+
+        if (all_done()) {
+            return a_caller;
+        }
+
+        caller = a_caller;
+        return std::noop_coroutine();
     }
 
     template <size_t I, typename U>
@@ -75,48 +92,20 @@ struct AnyState : CancellationHandler {
         std::get<I>(result).emplace(std::forward<U>(value));
     }
 
-    bool done() { return counter < sizeof...(Ts); }
-    bool complete() { return counter == 0; }
-
-    void connectCancellation() { slot_.installIfConnected(this); }
-
-    // CancellationHandler
-    Runnable* cancel() override {
-        DASSERT(cancel_state_ == CancelState::None);
-        cancel_state_ = CancelState::External;
-        slot_.clearIfConnected();
-
-        for (auto& sig : child_signals_) {
-            sig.emit();
-
-            if (all_waiter == nullptr) {
-                break;
-            }
-        }
-
-        return noop;
-    }
-
-    void cancelSync() {
-        slot_.clearIfConnected();
-
-        for (auto& sig : child_signals_) {
-            sig.emit();
-        }
-    }
-
     template <size_t I>
     CancellationSlot getSlot() {
         return child_signals_[I].slot();
     }
 
-    uint8_t counter = sizeof...(Ts);
-    std::coroutine_handle<> all_waiter = nullptr;
+    bool any_done() const { return counter < Children; }
+    bool all_done() const { return counter == 0; }
+
+    uint8_t counter = Children;
+    std::coroutine_handle<> caller = nullptr;
     std::tuple<supp::ManualLifetime<Ts>...> result{};
 
     CancellationSlot slot_;
-    std::array<CancellationSignal, sizeof...(Ts)> child_signals_;
-    CancelState cancel_state_ = CancelState::None;
+    std::array<CancellationSignal, Children> child_signals_;
 };
 
 template <typename T, size_t Index, typename State>
@@ -192,29 +181,11 @@ struct [[nodiscard]] Any : supp::NonCopyable {
                       std::move(tasks))) {}
 
         bool await_ready() {
-            // start all tasks
             std::apply([](auto&... task) { (task.start(), ...); }, tasks_);
-
-            // suspend only if not done
-            if (!state_.done()) {
-                return false;
-            }
-
-            // operation is complete, cancel all tasks
-            state_.cancelSync();
-
-            // wait for them to complete if needed
-            return state_.complete();
+            return state_.await_ready();
         }
 
-        void await_suspend(std::coroutine_handle<> caller) {
-            if (!state_.complete()) {
-                state_.connectCancellation();
-            }
-
-            // All tasks have been started, but none of them completed. Register awaiter.
-            state_.all_waiter = caller;
-        }
+        void await_suspend(std::coroutine_handle<> caller) { state_.await_suspend(caller); }
 
         ResultType await_resume() {
             return std::apply(

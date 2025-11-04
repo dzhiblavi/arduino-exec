@@ -113,13 +113,10 @@ class AsyncPromiseBase : CancellationHandler {
 
     template <typename A>
     auto await_transform(A&& awaitable) {
-        return std::forward<A>(awaitable);
-    }
-
-    template <CancellableAwaitable A>
-    auto await_transform(A&& awaitable) {
-        if (up_slot_.isConnected()) [[likely]] {
-            awaitable.setCancellationSlot(down_sig_.slot());
+        if constexpr (CancellableAwaitable<A>) {
+            if (up_slot_.isConnected()) [[likely]] {
+                awaitable.setCancellationSlot(down_sig_.slot());
+            }
         }
 
         return Callee<get_awaiter_t<A>>(
