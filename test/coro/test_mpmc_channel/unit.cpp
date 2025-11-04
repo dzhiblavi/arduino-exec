@@ -14,9 +14,9 @@ struct t_mpmc_channel {
             auto y = co_await c.receive();
 
             if (x == -1) {
-                TEST_ASSERT_FALSE(y.has_value());
+                TEST_ASSERT_FALSE(y);
             } else {
-                TEST_ASSERT_TRUE(y.has_value());
+                TEST_ASSERT_TRUE(y);
                 TEST_ASSERT_EQUAL(x, *y);
             }
         }(x));
@@ -25,7 +25,7 @@ struct t_mpmc_channel {
     auto sender(int x, ErrCode expected) {
         return makeManualTask([this](int x, ErrCode expected) mutable -> Async<> {
             auto ec = co_await c.send(x);
-            TEST_ASSERT_EQUAL(expected, ec);
+            TEST_ASSERT_EQUAL(expected, ec.code());
         }(x, expected));
     }
 
@@ -165,7 +165,7 @@ TEST_F(t_mpmc_channel, receive_cancellation) {
 
     auto coro = makeManualTask([&]() -> Async<> {
         auto res = co_await c.receive().setCancellationSlot(sig.slot());
-        TEST_ASSERT_FALSE(res.has_value());
+        TEST_ASSERT_FALSE(res);
     }());
 
     TEST_ASSERT_FALSE(sig.hasHandler());
@@ -185,7 +185,7 @@ TEST_F(t_mpmc_channel, send_cancellation) {
     auto coro = makeManualTask([&]() -> Async<> {
         int x = 30;
         auto ec = co_await c.send(x).setCancellationSlot(sig.slot());
-        TEST_ASSERT_EQUAL(ErrCode::Cancelled, ec);
+        TEST_ASSERT_EQUAL(ErrCode::Cancelled, ec.code());
     }());
 
     s1.start();

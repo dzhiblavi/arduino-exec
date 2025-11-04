@@ -251,4 +251,7 @@ class [[nodiscard]] Async : supp::NonCopyable {
     std::coroutine_handle<promise_type> coroutine_ = nullptr;
 };
 
+template <typename T>
+class Async<Result<T>> {};
+
 }  // namespace exec

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "exec/Result.h"
 #include "exec/cancel.h"
 
 #include <utility>
@@ -40,8 +41,25 @@ struct awaitable_result {
 template <class T>
 using awaitable_result_t = typename awaitable_result<T>::type;
 
-template <typename Awaitable>
-concept CancellableAwaitable = requires(Awaitable a, CancellationSlot slot) {
+template <typename R>
+struct result_type {
+    using type = R;
+};
+
+template <typename T>
+struct result_type<Result<T>> {
+    using type = T;
+};
+
+template <typename T>
+using result_type_t = typename result_type<T>::type;
+
+template <typename A>
+concept Awaitable = has_co_await_operator_v<A>;
+
+template <typename A>
+concept CancellableAwaitable = requires(A a, CancellationSlot slot) {
+    requires Awaitable<A>;
     { std::move(a).setCancellationSlot(slot) };
 };
 

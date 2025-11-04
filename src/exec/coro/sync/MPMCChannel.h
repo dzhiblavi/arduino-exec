@@ -1,7 +1,9 @@
 #pragma once
 
 #include "exec/Error.h"
+#include "exec/Result.h"
 #include "exec/Runnable.h"
+#include "exec/Unit.h"
 #include "exec/cancel.h"
 
 #include <supp/CircularBuffer.h>
@@ -11,7 +13,6 @@
 
 #include <coroutine>
 #include <cstddef>
-#include <optional>
 #include <utility>
 
 namespace exec {
@@ -51,7 +52,7 @@ class MPMCChannel {
 
         bool await_ready() {
             if (self->buf_.full() && !self->parked_.empty()) {
-                value.emplace(self->buf_.pop());
+                result.emplace(self->buf_.pop());
 
                 auto* sender = static_cast<SendAwaitable*>(self->parked_.popFront());
                 sender->resume();
@@ -59,7 +60,7 @@ class MPMCChannel {
             }
 
             if (!self->buf_.empty()) {
-                value.emplace(self->buf_.pop());
+                result.emplace(self->buf_.pop());
                 return true;
             }
 
@@ -73,13 +74,13 @@ class MPMCChannel {
             self->parked_.pushBack(this);
         }
 
-        std::optional<T> await_resume() {
-            return value.initialized() ? std::optional<T>{std::move(value).get()} : std::nullopt;
+        Result<T> await_resume() {
+            return result ? std::move(result) : Result<T>{ErrCode::Cancelled};
         }
 
         void resume(T* val) {
             slot.clearIfConnected();
-            value.emplace(std::move(*val));
+            result.emplace(std::move(*val));
             caller.resume();
         }
 
@@ -88,7 +89,7 @@ class MPMCChannel {
         using Awaitable::self;
         using Awaitable::slot;
 
-        supp::ManualLifetime<T> value;
+        Result<T> result;
     };
 
     struct SendAwaitable : Awaitable {
@@ -119,9 +120,9 @@ class MPMCChannel {
             self->parked_.pushBack(this);
         }
 
-        ErrCode await_resume() const {
+        Result<Unit> await_resume() const {
             // cancel() zeroes the self pointer
-            return self == nullptr ? ErrCode::Cancelled : ErrCode::Success;
+            return self == nullptr ? Result<Unit>{ErrCode::Cancelled} : Result<Unit>(unit);
         }
 
         void resume() {
