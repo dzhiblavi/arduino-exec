@@ -83,8 +83,8 @@ class ManualTask : supp::NonCopyable {
     friend struct detail::ManualPromise<T>;
 };
 
-template <typename T>
-ManualTask<T> makeManualTask(Async<T> task) {
+template <Awaitable A>
+ManualTask<awaitable_result_t<A>> makeManualTask(A task) {
     co_return co_await std::move(task);
 }
 
