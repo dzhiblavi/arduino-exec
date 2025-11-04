@@ -1,9 +1,11 @@
 #pragma once
 
-#include "exec/coro/Async.h"
+#include "exec/coro/traits.h"
 
-#include <supp/Pinned.h>
+#include <supp/ManualLifetime.h>
+#include <supp/NonCopyable.h>
 
+#include <coroutine>
 #include <utility>
 
 namespace exec {
@@ -31,7 +33,7 @@ struct ManualPromise {
         return Awaitable{};
     }
 
-    void return_value(Result<T> res) const { *result_ = std::move(res); }
+    void return_value(T res) const { result_->emplace(std::move(res)); }
 
     void unhandled_exception() const {
         LFATAL("unhandled_exception");
@@ -39,7 +41,7 @@ struct ManualPromise {
     }
 
  private:
-    Result<T>* result_ = nullptr;
+    supp::ManualLifetime<T>* result_ = nullptr;
 
     friend class ManualTask<T>;
 };
@@ -69,16 +71,16 @@ class ManualTask : supp::NonCopyable {
         coroutine_.resume();
     }
 
-    bool done() const { return result_.code() != ErrCode::Unknown; }
+    bool done() const { return result_.initialized(); }
 
-    const Result<T>& result() const {
+    const T& result() const {
         DASSERT(done());
         return result_;
     }
 
  private:
     coroutine_handle_t coroutine_;
-    Result<T> result_;
+    supp::ManualLifetime<T> result_;
 
     friend struct detail::ManualPromise<T>;
 };
