@@ -1,3 +1,5 @@
+#include "coro/test.h"
+
 #include <exec/coro/Async.h>
 #include <exec/coro/ManualTask.h>
 #include <exec/coro/par/any.h>
@@ -8,7 +10,7 @@
 
 namespace exec {
 
-TEST(wait_no_blocking) {
+TEST_F(t_coro, wait_no_blocking) {
     Event e1, e2;
     e1.set();
     e2.set();
@@ -23,7 +25,7 @@ TEST(wait_no_blocking) {
     TEST_ASSERT_TRUE(coro.done());
 }
 
-TEST(wait_any_blocked) {
+TEST_F(t_coro, wait_any_blocked) {
     Event e1, e2;
 
     auto coro = makeManualTask([](auto& e1, auto& e2) -> Async<> {  //
@@ -39,7 +41,7 @@ TEST(wait_any_blocked) {
     TEST_ASSERT_TRUE(coro.done());
 }
 
-TEST(connects_cancellation) {
+TEST_F(t_coro, connects_cancellation) {
     Event e1, e2;
     CancellationSignal sig;
 
@@ -54,7 +56,7 @@ TEST(connects_cancellation) {
     TEST_ASSERT_TRUE(coro.done());
 }
 
-TEST(cancel_none_completed) {
+TEST_F(t_coro, cancel_none_completed) {
     CancellationSignal sig;
     Event e1, e2;
 
@@ -70,7 +72,7 @@ TEST(cancel_none_completed) {
     TEST_ASSERT_TRUE(coro.done());
 }
 
-TEST(cancel_partially_completed) {
+TEST_F(t_coro, cancel_partially_completed) {
     CancellationSignal sig;
     Event e1, e2;
     auto* set = GENERATE(&e1, &e2);
@@ -87,7 +89,7 @@ TEST(cancel_partially_completed) {
     TEST_ASSERT_EQUAL(noop, sig.emitRaw());
 }
 
-TEST(cancel_both_completed) {
+TEST_F(t_coro, cancel_both_completed) {
     CancellationSignal sig;
     Event e1, e2;
     e1.set();
@@ -104,7 +106,7 @@ TEST(cancel_both_completed) {
     TEST_ASSERT_EQUAL(noop, sig.emitRaw());
 }
 
-TEST(combine_any_with_any_outer_cancelled) {
+TEST_F(t_coro, combine_any_with_any_outer_cancelled) {
     CancellationSignal sig;
     Event e1, e2, e3;
 
@@ -125,7 +127,7 @@ TEST(combine_any_with_any_outer_cancelled) {
     TEST_ASSERT_TRUE(coro.done());
 }
 
-TEST(cancel_one_child_releases_other) {
+TEST_F(t_coro, cancel_one_child_releases_other) {
     CancellationSignal sig;
     Mutex m;
     Event e1, e2;

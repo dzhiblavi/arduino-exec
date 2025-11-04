@@ -9,11 +9,21 @@ bool fail_allocation = false;
 
 namespace exec::alloc {
 
+size_t allocated_count = 0;
+
 void* allocate(size_t size, const std::nothrow_t&) noexcept {
-    return fail_allocation ? nullptr : malloc(size);
+    if (fail_allocation) {
+        return nullptr;
+    }
+
+    LINFO("+allocated");
+    ++allocated_count;
+    return malloc(size);
 }
 
 void deallocate(void* ptr, size_t) noexcept {
+    LINFO("-allocated");
+    --allocated_count;
     free(ptr);
 }
 
@@ -21,7 +31,12 @@ void deallocate(void* ptr, size_t) noexcept {
 
 namespace exec {
 
-TEST(async_initial_suspend) {
+struct t_async {
+    t_async() = default;
+    ~t_async() { TEST_ASSERT_EQUAL(0, alloc::allocated_count); }
+};
+
+TEST_F(t_async, async_initial_suspend) {
     bool done = false;
 
     auto coro = [&]() -> Async<> {
@@ -40,7 +55,7 @@ TEST(async_initial_suspend) {
     TEST_ASSERT_TRUE(done);
 }
 
-TEST(async_co_return_void) {
+TEST_F(t_async, async_co_return_void) {
     bool done = false;
 
     auto task = [&]() -> Async<> {  //
@@ -60,7 +75,7 @@ TEST(async_co_return_void) {
     TEST_ASSERT_TRUE(done);
 }
 
-TEST(async_co_return_value) {
+TEST_F(t_async, async_co_return_value) {
     bool done = false;
 
     auto task = [&]() -> Async<int> {  //
@@ -81,7 +96,7 @@ TEST(async_co_return_value) {
     TEST_ASSERT_TRUE(done);
 }
 
-TEST(async_cancellation) {
+TEST_F(t_async, async_cancellation) {
     Event e;
     CancellationSignal sig;
 
@@ -111,7 +126,7 @@ TEST(async_cancellation) {
     TEST_ASSERT_TRUE(task.done());
 }
 
-TEST(async_cancellation_ignored) {
+TEST_F(t_async, async_cancellation_ignored) {
     Event e;
     CancellationSignal sig;
 
@@ -140,7 +155,7 @@ TEST(async_cancellation_ignored) {
     TEST_ASSERT_TRUE(task.done());
 }
 
-TEST(async_sync_does_not_connect_cancellation) {
+TEST_F(t_async, async_sync_does_not_connect_cancellation) {
     CancellationSignal sig;
 
     auto make_task = [&]() -> Async<int> {  //
@@ -154,7 +169,7 @@ TEST(async_sync_does_not_connect_cancellation) {
     TEST_ASSERT_FALSE(sig.hasHandler());
 }
 
-TEST(async_async_connects_cancellation) {
+TEST_F(t_async, async_async_connects_cancellation) {
     Event event;
     CancellationSignal sig;
 
@@ -171,7 +186,7 @@ TEST(async_async_connects_cancellation) {
     TEST_ASSERT_TRUE(task.done());
 }
 
-TEST(async_cancel_while_blocked) {
+TEST_F(t_async, async_cancel_while_blocked) {
     Event event;
     CancellationSignal sig;
 
@@ -189,7 +204,7 @@ TEST(async_cancel_while_blocked) {
     TEST_ASSERT_TRUE(task.done());
 }
 
-TEST(async_chain_cancellation) {
+TEST_F(t_async, async_chain_cancellation) {
     Event event;
     CancellationSignal sig;
 
@@ -220,7 +235,7 @@ TEST(async_chain_cancellation) {
     }
 }
 
-TEST(async_allocation_failure) {
+TEST_F(t_async, async_allocation_failure) {
     Event event;
 
     bool done = false;
@@ -245,7 +260,7 @@ TEST(async_allocation_failure) {
     fail_allocation = false;
 }
 
-TEST(async_multiple_suspension_points) {
+TEST_F(t_async, async_multiple_suspension_points) {
     Event event;
     CancellationSignal sig;
     int i = 0;

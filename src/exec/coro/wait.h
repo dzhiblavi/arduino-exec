@@ -44,8 +44,6 @@ auto wait(ttime::Duration d) {
 
         // called when cancellation is signalled
         Runnable* cancel() override {
-            slot_.clearIfConnected();
-
             if (!service<TimerService>()->remove(&entry_)) {
                 // Timer has already went off or has been cancelled, nothing to do here
                 return noop;

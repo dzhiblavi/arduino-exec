@@ -48,8 +48,6 @@ auto read(Stream* stream, char* dst, size_t len) {
 
         // CancellationHandler
         Runnable* cancel() override {
-            slot_.clearIfConnected();
-
             // next performRead() will return true immediately
             len_ = 0;
             return noop;

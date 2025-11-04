@@ -8,6 +8,9 @@
 
 namespace exec {
 
+template <typename T>
+class ManualTask;
+
 namespace detail {
 
 template <typename T>
@@ -20,21 +23,25 @@ struct ManualPromise {
     auto initial_suspend() const { return std::suspend_always{}; }
 
     auto final_suspend() const noexcept {
-        // allow user to retrieve the result
-        return std::suspend_always{};
+        struct Awaitable {
+            bool await_ready() noexcept { return false; }
+            void await_suspend(std::coroutine_handle<> self) noexcept { self.destroy(); }
+            void await_resume() noexcept {}
+        };
+        return Awaitable{};
     }
+
+    void return_value(Result<T> res) const { *result_ = std::move(res); }
 
     void unhandled_exception() const {
         LFATAL("unhandled_exception");
         abort();
     }
 
-    void return_value(Result<T> res) { result_ = std::move(res); }
-
-    const supp::ManualLifetime<T>& result() const { return result_; }
-
  private:
-    Result<T> result_;
+    Result<T>* result_ = nullptr;
+
+    friend class ManualTask<T>;
 };
 
 }  // namespace detail
@@ -46,34 +53,34 @@ class ManualTask : supp::NonCopyable {
     using coroutine_handle_t = std::coroutine_handle<promise_type>;
 
     ManualTask(coroutine_handle_t coro) : coroutine_{coro} {}
-    ManualTask(ManualTask&& r) : coroutine_{std::exchange(r.coroutine_, nullptr)} {}
+    ManualTask(ManualTask&& r) noexcept : coroutine_{std::exchange(r.coroutine_, nullptr)} {}
 
     ~ManualTask() {
         if (!coroutine_) {
             return;
         }
 
-        DASSERT(coroutine_.done(), "task destroyed before completion");
-        coroutine_.destroy();
+        DASSERT(done(), "task destroyed before completion");
     }
 
     void start() {
         DASSERT(coroutine_);
+        coroutine_.promise().result_ = &result_;
         coroutine_.resume();
     }
 
-    bool done() const {
-        DASSERT(coroutine_);
-        return coroutine_.done();
-    }
+    bool done() const { return result_.code() != ErrCode::Unknown; }
 
     const Result<T>& result() const {
-        DASSERT(coroutine_);
-        return coroutine_.promise().result();
+        DASSERT(done());
+        return result_;
     }
 
  private:
     coroutine_handle_t coroutine_;
+    Result<T> result_;
+
+    friend struct detail::ManualPromise<T>;
 };
 
 template <typename T>

@@ -48,7 +48,6 @@ class Event : supp::Pinned {
 
         // CancellationHandler
         Runnable* cancel() override {
-            slot_.clearIfConnected();
             unlink();
             self_ = nullptr;
             caller_.resume();

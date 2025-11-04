@@ -1,3 +1,5 @@
+#include "coro/test.h"
+
 #include <exec/coro/Async.h>
 #include <exec/coro/ManualTask.h>
 #include <exec/coro/sync/Event.h>
@@ -7,7 +9,7 @@
 
 namespace exec {
 
-struct t_semaphore {
+struct t_semaphore : t_coro {
     Semaphore m{2};
 };
 

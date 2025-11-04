@@ -26,13 +26,9 @@ class CancellationSlot {
     CancellationSlot(CancellationSlot&& r) noexcept
         : handler_{std::exchange(r.handler_, nullptr)} {}
 
-    bool isConnected() const {
-        return handler_ != nullptr;
-    }
+    bool isConnected() const { return handler_ != nullptr; }
 
-    bool hasHandler() const {
-        return handler_ != nullptr && *handler_ != nullptr;
-    }
+    bool hasHandler() const { return handler_ != nullptr && *handler_ != nullptr; }
 
     void installIfConnected(CancellationHandler* handler) {
         if (isConnected()) {
@@ -49,13 +45,9 @@ class CancellationSlot {
  private:
     CancellationSlot(CancellationHandler** handler) : handler_{handler} {}
 
-    void install(CancellationHandler* handler) {
-        *handler_ = handler;
-    }
+    void install(CancellationHandler* handler) { *handler_ = handler; }
 
-    void clear() {
-        *handler_ = nullptr;
-    }
+    void clear() { *handler_ = nullptr; }
 
     CancellationHandler** handler_ = nullptr;
 
@@ -75,20 +67,15 @@ class CancellationSignal : supp::Pinned {
             return noop;
         }
 
-        return handler_->cancel();
+        // non-reentrant emit
+        return std::exchange(handler_, nullptr)->cancel();
     }
 
-    CancellationSlot slot() {
-        return {&handler_};
-    }
+    CancellationSlot slot() { return {&handler_}; }
 
-    void clear() {
-        handler_ = nullptr;
-    }
+    void clear() { handler_ = nullptr; }
 
-    bool hasHandler() {
-        return handler_ != nullptr;
-    }
+    bool hasHandler() const { return handler_ != nullptr; }
 
  private:
     CancellationHandler* handler_ = nullptr;

@@ -70,8 +70,6 @@ struct AnyState : CancellationHandler {
 
     std::coroutine_handle<> doCancel() {
         DASSERT(caller != nullptr);
-
-        slot_.clearIfConnected();
         auto a_caller = std::exchange(caller, nullptr);
 
         for (auto& sig : child_signals_) {

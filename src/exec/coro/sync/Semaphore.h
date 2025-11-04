@@ -56,7 +56,6 @@ class Semaphore : supp::NonCopyable {
 
         // CancellationHandler
         Runnable* cancel() override {
-            slot_.clearIfConnected();
             unlink();
             self_ = nullptr;
             caller_.resume();

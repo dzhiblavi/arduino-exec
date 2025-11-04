@@ -41,8 +41,6 @@ struct AllState : CancellationHandler {
     // CancellationHandler
     Runnable* cancel() override {
         DASSERT(caller != nullptr);
-
-        slot_.clearIfConnected();
         auto a_caller = std::exchange(caller, std::noop_coroutine());
 
         for (auto& sig : child_signals_) {

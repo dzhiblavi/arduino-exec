@@ -1,5 +1,7 @@
 #define LOGGING_DISABLED
 
+#include "coro/test.h"
+
 #include <exec/coro/Async.h>
 #include <exec/coro/ManualTask.h>
 #include <exec/coro/sync/MPMCChannel.h>
@@ -8,7 +10,7 @@
 
 namespace exec {
 
-struct t_mpmc_channel {
+struct t_mpmc_channel : t_coro {
     auto receiver(int x) {
         return makeManualTask([this](int x) -> Async<> {
             auto y = co_await c.receive();

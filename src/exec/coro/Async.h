@@ -143,7 +143,6 @@ class AsyncPromiseBase : CancellationHandler {
  private:
     // CancellationHandler
     Runnable* cancel() override {
-        up_slot_.clearIfConnected();
         result_->setError(ErrCode::Cancelled);
         down_sig_.emit();
         return noop;
@@ -200,7 +199,7 @@ class [[nodiscard]] Async : supp::NonCopyable {
 
     Async() = default;
     Async(std::coroutine_handle<promise_type> coroutine) : coroutine_(coroutine) {}
-    Async(Async&& t) : coroutine_(std::exchange(t.coroutine_, nullptr)) {}
+    Async(Async&& t) noexcept : coroutine_(std::exchange(t.coroutine_, nullptr)) {}
     ~Async() { DASSERT(!coroutine_, F("Async<T> has not been consumed")); }
 
     // CancellableAwaitable
@@ -222,22 +221,30 @@ class [[nodiscard]] Async : supp::NonCopyable {
             Awaitable(std::coroutine_handle<promise_type> coroutine)
                 : coroutine_{std::move(coroutine)} {}
 
-            bool await_ready() const { return !coroutine_ || coroutine_.done(); }
-
-            std::coroutine_handle<> await_suspend(std::coroutine_handle<> caller) {
-                DASSERT(coroutine_);
-                auto& promise = coroutine_.promise();
-                promise.suspend(caller, &result_);
-                return coroutine_;
-            }
-
-            Result<T> await_resume() {
+            ~Awaitable() {
                 if (!coroutine_) {
-                    result_.setError(ErrCode::OutOfMemory);
+                    return;
                 }
 
-                return std::move(result_);
+                // the coroutine has been discarded
+                coroutine_.destroy();
             }
+
+            bool await_ready() {
+                if (!coroutine_) {
+                    result_.setError(ErrCode::OutOfMemory);
+                    return true;
+                }
+
+                return coroutine_.done();
+            }
+
+            std::coroutine_handle<> await_suspend(std::coroutine_handle<> caller) {
+                coroutine_.promise().suspend(caller, &result_);
+                return std::exchange(coroutine_, nullptr);
+            }
+
+            Result<T> await_resume() { return std::move(result_); }
 
             std::coroutine_handle<promise_type> coroutine_;
             Result<T> result_;

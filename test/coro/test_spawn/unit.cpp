@@ -1,4 +1,5 @@
 #include "Executor.h"
+#include "coro/test.h"
 
 #include <exec/coro/spawn.h>
 #include <exec/coro/sync/Event.h>
@@ -7,10 +8,8 @@
 
 namespace exec {
 
-struct t_spawn {
-    t_spawn() {
-        setService<Executor>(&executor);
-    }
+struct t_spawn : t_coro {
+    t_spawn() { setService<Executor>(&executor); }
 
     test::Executor executor;
 };

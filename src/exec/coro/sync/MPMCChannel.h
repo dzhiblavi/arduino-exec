@@ -34,7 +34,6 @@ class MPMCChannel {
      protected:
         // CancellationHandler
         Runnable* cancel() override {
-            slot.clearIfConnected();
             unlink();
             self = nullptr;
             caller.resume();

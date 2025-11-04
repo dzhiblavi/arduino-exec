@@ -1,3 +1,5 @@
+#include "coro/test.h"
+
 #include <exec/Result.h>
 #include <exec/coro/Async.h>
 #include <exec/coro/ManualTask.h>
@@ -9,7 +11,7 @@
 
 namespace exec {
 
-TEST(wait_no_blocking) {
+TEST_F(t_coro, wait_no_blocking) {
     Event e1, e2;
     e1.set();
     e2.set();
@@ -26,7 +28,7 @@ TEST(wait_no_blocking) {
     TEST_ASSERT_TRUE(c.done());
 }
 
-TEST(wait_all_blocked) {
+TEST_F(t_coro, wait_all_blocked) {
     Event e1, e2;
 
     auto coro = makeManualTask([](auto& e1, auto& e2) -> Async<> {  //
@@ -55,7 +57,7 @@ TEST(wait_all_blocked) {
     }
 }
 
-TEST(wait_one_blocked) {
+TEST_F(t_coro, wait_one_blocked) {
     Event e1, e2;
     e2.set();
 
@@ -72,7 +74,7 @@ TEST(wait_one_blocked) {
     TEST_ASSERT_TRUE(coro.done());
 }
 
-TEST(connects_cancellation) {
+TEST_F(t_coro, connects_cancellation) {
     Event e1, e2;
     CancellationSignal sig;
 
@@ -88,7 +90,7 @@ TEST(connects_cancellation) {
     TEST_ASSERT_TRUE(coro.done());
 }
 
-TEST(cancel_none_completed) {
+TEST_F(t_coro, cancel_none_completed) {
     CancellationSignal sig;
     Event e1, e2;
 
@@ -104,7 +106,7 @@ TEST(cancel_none_completed) {
     TEST_ASSERT_TRUE(coro.done());
 }
 
-TEST(cancel_partially_completed) {
+TEST_F(t_coro, cancel_partially_completed) {
     CancellationSignal sig;
     Event e1, e2;
     auto* set = GENERATE(&e1, &e2);
@@ -122,7 +124,7 @@ TEST(cancel_partially_completed) {
     TEST_ASSERT_TRUE(coro.done());
 }
 
-TEST(cancel_both_completed) {
+TEST_F(t_coro, cancel_both_completed) {
     CancellationSignal sig;
     Event e1, e2;
     e1.set();
@@ -139,7 +141,7 @@ TEST(cancel_both_completed) {
     TEST_ASSERT_EQUAL(noop, sig.emitRaw());
 }
 
-TEST(combine_all_with_all) {
+TEST_F(t_coro, combine_all_with_all) {
     Event e1, e2, e3;
 
     auto coro = makeManualTask([&](auto& e1, auto& e2, auto& e3) -> Async<> {
@@ -161,7 +163,7 @@ TEST(combine_all_with_all) {
     TEST_ASSERT_TRUE(coro.done());
 }
 
-TEST(combine_all_with_all_outer_cancelled) {
+TEST_F(t_coro, combine_all_with_all_outer_cancelled) {
     CancellationSignal sig;
     Event e1, e2, e3;
 
@@ -186,7 +188,7 @@ TEST(combine_all_with_all_outer_cancelled) {
     TEST_ASSERT_TRUE(coro.done());
 }
 
-TEST(cancel_one_child_releases_other) {
+TEST_F(t_coro, cancel_one_child_releases_other) {
     CancellationSignal sig;
     Mutex m;
     Event e;
