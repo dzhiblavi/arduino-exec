@@ -87,6 +87,29 @@ TEST_F(t_coro, cancel_join) {
     TEST_ASSERT_FALSE(sig.hasHandler());
 }
 
+TEST_F(t_coro, cancel_join_partial_sync) {
+    CancellationSignal sig;
+    Event e1, e2;
+
+    auto coro = [&]() -> Async<> {
+        DynamicScope scope;
+
+        scope.add(e1.wait());
+        scope.add(e2.wait());
+
+        co_await scope.join().setCancellationSlot(sig.slot());
+    };
+
+    auto m = makeManualTask(coro());
+
+    e1.set();
+    m.start();
+    TEST_ASSERT_FALSE(m.done());
+
+    e2.fireOnce();
+    TEST_ASSERT_TRUE(m.done());
+}
+
 TEST_F(t_coro, cancel_partial_complete) {
     CancellationSignal sig;
     Event e1, e2;
@@ -133,6 +156,28 @@ TEST_F(t_coro, drop_join) {
 
     auto m = makeManualTask(coro().setCancellationSlot(sig.slot()));
 
+    m.start();
+    TEST_ASSERT_FALSE(m.done());
+
+    sig.emit();
+    TEST_ASSERT_TRUE(m.done());
+}
+
+TEST_F(t_coro, drop_join_sync) {
+    CancellationSignal sig;
+    Event e1, e2;
+
+    auto coro = [&]() -> Async<> {
+        co_await e1.wait();
+
+        DynamicScope scope;
+        scope.add(e2.wait());
+        co_await scope.join();
+    };
+
+    auto m = makeManualTask(coro().setCancellationSlot(sig.slot()));
+
+    e2.set();
     m.start();
     TEST_ASSERT_FALSE(m.done());
 
