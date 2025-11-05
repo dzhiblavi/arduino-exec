@@ -9,16 +9,11 @@
 
 namespace exec {
 
-struct CronTask : supp::RandomAccessPriorityQueueNode {
-    CronTask(Runnable* task, ttime::Duration interval, ttime::Time at = ttime::mono::now())
-        : task{task}
-        , interval{interval}
+struct CronTask : Runnable, supp::RandomAccessPriorityQueueNode {
+    CronTask(ttime::Duration interval, ttime::Time at = ttime::mono::now())
+        : interval{interval}
         , at{at} {}
 
-    CronTask(ttime::Duration interval, ttime::Time at = ttime::mono::now())
-        : CronTask(noop, interval, at) {}
-
-    Runnable* task;
     ttime::Duration interval;
     ttime::Time at = ttime::mono::now();
 };
@@ -34,21 +29,16 @@ struct CronTask : supp::RandomAccessPriorityQueueNode {
 class CronService {
  public:
     virtual ~CronService() = default;
-    virtual void add(CronTask* task) = 0;
-    virtual bool remove(CronTask* task) = 0;
+    [[nodiscard]] virtual bool add(CronTask* task) = 0;
+    [[nodiscard]] virtual bool remove(CronTask* task) = 0;
 };
 
 template <int MaxTasks>
 class HeapCronService : public CronService,
                         public ServiceBase<CronService, HeapCronService<MaxTasks>> {
  public:
-    void add(CronTask* task) override {
-        heap_.push(task);
-    }
-
-    bool remove(CronTask* task) override {
-        return heap_.erase(task);
-    }
+    bool add(CronTask* task) override { return heap_.push(task); }
+    bool remove(CronTask* task) override { return heap_.erase(task); }
 
     // Service
     void tick() override {
@@ -57,7 +47,7 @@ class HeapCronService : public CronService,
         while (!heap_.empty() && now >= heap_.front()->at) {
             auto* front = heap_.front();
             front->at = now + front->interval;
-            front->task->runAll();  // may call remove()
+            front->runAll();  // may call remove()
 
             if (front->connected()) {
                 heap_.fix(front);

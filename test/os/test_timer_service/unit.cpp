@@ -11,17 +11,26 @@ void setUp() {
 namespace exec {
 
 auto makeTask(int& cnt) {
-    return runnable([&cnt](auto) { ++cnt; });
+    struct Task : TimerEntry {
+        Task(int& cnt) : cnt{cnt} {}
+
+        Runnable* run() override {
+            ++cnt;
+            return noop;
+        }
+
+        int& cnt;
+    };
+
+    return Task{cnt};
 }
 
 TEST(test_timer_not_ready) {
     int cnt = 0;
-    auto task = makeTask(cnt);
+    auto t = makeTask(cnt);
     HeapTimerService<2> s;
 
-    TimerEntry t;
     t.at = ttime::Time(10);
-    t.task = &task;
 
     s.add(&t);
     ttime::mono::advance(ttime::Duration(5));
@@ -32,12 +41,10 @@ TEST(test_timer_not_ready) {
 
 TEST(test_timer_ready) {
     int cnt = 0;
-    auto task = makeTask(cnt);
+    auto t = makeTask(cnt);
     HeapTimerService<2> s;
 
-    TimerEntry t;
     t.at = ttime::Time(10);
-    t.task = &task;
 
     s.add(&t);
     ttime::mono::advance(ttime::Duration(15));
@@ -48,12 +55,10 @@ TEST(test_timer_ready) {
 
 TEST(test_timer_cancel_ok) {
     int cnt = 0;
-    auto task = makeTask(cnt);
+    auto t = makeTask(cnt);
     HeapTimerService<2> s;
 
-    TimerEntry t;
     t.at = ttime::Time(10);
-    t.task = &task;
 
     s.add(&t);
     s.tick();
@@ -67,12 +72,10 @@ TEST(test_timer_cancel_ok) {
 
 TEST(test_timer_cancel_gone) {
     int cnt = 0;
-    auto task = makeTask(cnt);
+    auto t = makeTask(cnt);
     HeapTimerService<2> s;
 
-    TimerEntry t;
     t.at = ttime::Time(10);
-    t.task = &task;
 
     s.add(&t);
     ttime::mono::advance(ttime::Duration(15));
@@ -91,10 +94,8 @@ TEST(test_wake_at) {
 
     SECTION("with defers") {
         int cnt = 0;
-        auto task = makeTask(cnt);
-        TimerEntry t;
+        auto t = makeTask(cnt);
         t.at = ttime::Time(10);
-        t.task = &task;
 
         s.add(&t);
         TEST_ASSERT_EQUAL(ttime::Time(10).micros(), s.wakeAt().micros());

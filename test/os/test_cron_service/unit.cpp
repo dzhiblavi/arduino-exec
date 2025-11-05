@@ -10,8 +10,22 @@ void setUp() {
 
 namespace exec {
 
-auto makeTask(int& cnt) {
-    return runnable([&cnt](auto) { ++cnt; });
+template <typename F>
+struct Task : CronTask {
+    Task(F task, ttime::Duration d, ttime::Time at = ttime::mono::now())
+        : CronTask(d, at)
+        , task{task} {}
+
+    Runnable* run() override {
+        task(this);
+        return noop;
+    }
+
+    F task;
+};
+
+auto inc(int& c) {
+    return [&](auto) { ++c; };
 }
 
 TEST(test_cron_tick_no_tasks) {
@@ -23,9 +37,8 @@ TEST(test_cron_at) {
     HeapCronService<2> s;
 
     int c1 = 0;
-    auto r1 = makeTask(c1);
-    auto t1 = CronTask(&r1, ttime::Duration(10), ttime::Time(10));
-    s.add(&t1);
+    auto r1 = Task(inc(c1), ttime::Duration(10), ttime::Time(10));
+    s.add(&r1);
 
     SECTION("not ready") {
         s.tick();
@@ -43,9 +56,8 @@ TEST(test_cron_interval) {
     HeapCronService<2> s;
 
     int c1 = 0;
-    auto r1 = makeTask(c1);
-    auto t1 = CronTask(&r1, ttime::Duration(10));
-    s.add(&t1);
+    auto r1 = Task(inc(c1), ttime::Duration(10));
+    s.add(&r1);
 
     s.tick();
     TEST_ASSERT_EQUAL(1, c1);
@@ -69,26 +81,23 @@ TEST(test_cron_interval) {
 TEST(test_cron_wake_at) {
     HeapCronService<3> s;
     int c = 0;
-    auto r1 = makeTask(c);
-    auto r2 = makeTask(c);
-    auto r3 = makeTask(c);
-    auto t1 = CronTask(&r1, ttime::Duration(30));
-    auto t2 = CronTask(&r2, ttime::Duration(10));
-    auto t3 = CronTask(&r3, ttime::Duration(20));
+    auto r1 = Task(inc(c), ttime::Duration(30));
+    auto r2 = Task(inc(c), ttime::Duration(10));
+    auto r3 = Task(inc(c), ttime::Duration(20));
 
     SECTION("no tasks") {
         TEST_ASSERT_EQUAL(ttime::Time::max().micros(), s.wakeAt().micros());
     }
 
     SECTION("task ready") {
-        s.add(&t1);
+        s.add(&r1);
         TEST_ASSERT_EQUAL(ttime::mono::now().micros(), s.wakeAt().micros());
     }
 
     SECTION("multiple tasks") {
-        s.add(&t1);
-        s.add(&t2);
-        s.add(&t3);
+        s.add(&r1);
+        s.add(&r2);
+        s.add(&r3);
         s.tick();
         TEST_ASSERT_EQUAL(10, s.wakeAt().micros());
     }
@@ -97,26 +106,23 @@ TEST(test_cron_wake_at) {
 TEST(test_cron_remove) {
     HeapCronService<3> s;
     int c = 0;
-    auto r1 = makeTask(c);
-    auto r2 = makeTask(c);
-    auto r3 = makeTask(c);
-    auto t1 = CronTask(&r1, ttime::Duration(30));
-    auto t2 = CronTask(&r2, ttime::Duration(10));
-    auto t3 = CronTask(&r3, ttime::Duration(20));
+    auto r1 = Task(inc(c), ttime::Duration(30));
+    auto r2 = Task(inc(c), ttime::Duration(10));
+    auto r3 = Task(inc(c), ttime::Duration(20));
 
     SECTION("not linked") {
-        TEST_ASSERT_FALSE(s.remove(&t1));
+        TEST_ASSERT_FALSE(s.remove(&r1));
     }
 
     SECTION("task linked") {
-        s.add(&t1);
-        TEST_ASSERT_TRUE(s.remove(&t1));
-        TEST_ASSERT_FALSE(t1.connected());
+        s.add(&r1);
+        TEST_ASSERT_TRUE(s.remove(&r1));
+        TEST_ASSERT_FALSE(r1.connected());
     }
 
     SECTION("remove => task is not executed") {
-        s.add(&t1);
-        s.remove(&t1);
+        s.add(&r1);
+        s.remove(&r1);
         s.tick();
         TEST_ASSERT_EQUAL(0, c);
         TEST_ASSERT_EQUAL(ttime::Time::max().micros(), s.wakeAt().micros());
@@ -128,23 +134,18 @@ TEST(test_cron_remove_self_in_callback) {
 
     int cnt1 = 0, cnt2 = 0;
     bool r1 = false, r2 = false;
-    auto c1 = CronTask(ttime::Duration(10));
-    auto c2 = CronTask(ttime::Duration(30));
 
-    auto task = [&s](bool& rem, auto& task, int& cnt) {
-        return runnable([&](auto) {
+    auto task = [&s](bool& rem, int& cnt) {
+        return [&](auto self) {
             ++cnt;
             if (rem) {
-                s.remove(&task);
+                s.remove(self);
             }
-        });
+        };
     };
 
-    auto t1 = task(r1, c1, cnt1);
-    auto t2 = task(r2, c2, cnt2);
-
-    c1.task = &t1;
-    c2.task = &t2;
+    auto c1 = Task(task(r1, cnt1), ttime::Duration(10));
+    auto c2 = Task(task(r2, cnt2), ttime::Duration(30));
 
     s.add(&c1);
     s.add(&c2);
@@ -193,23 +194,22 @@ TEST(test_cron_remove_other_in_callback) {
 
     int cnt1 = 0, cnt2 = 0;
     bool r1 = false, r2 = false;
-    auto c1 = CronTask(ttime::Duration(10));
-    auto c2 = CronTask(ttime::Duration(30));
 
-    auto task = [&s](bool& rem, auto& task, int& cnt) {
-        return runnable([&](auto) {
+    CronTask *e1 = nullptr, *e2 = nullptr;
+
+    auto task = [&s](bool& rem, int& cnt, CronTask*& task) {
+        return [&](auto) {
             ++cnt;
             if (rem) {
-                s.remove(&task);
+                s.remove(task);
             }
-        });
+        };
     };
 
-    auto t1 = task(r1, c2, cnt1);
-    auto t2 = task(r2, c1, cnt2);
-
-    c1.task = &t1;
-    c2.task = &t2;
+    auto c1 = Task(task(r1, cnt1, e2), ttime::Duration(10));
+    auto c2 = Task(task(r2, cnt2, e1), ttime::Duration(30));
+    e1 = &c1;
+    e2 = &c2;
 
     s.add(&c1);
     s.add(&c2);
@@ -256,17 +256,15 @@ TEST(test_cron_remove_other_in_callback) {
 TEST(test_cron_remove_then_add_back) {
     HeapCronService<1> s;
 
-    auto task = [&s](auto& task, int& cnt) {
-        return runnable([&](auto) {
+    auto task = [&s](int& cnt) {
+        return [&](auto self) {
             ++cnt;
-            s.remove(&task);
-        });
+            s.remove(self);
+        };
     };
 
     int c = 0;
-    auto t = CronTask(ttime::Duration(30));
-    auto r = task(t, c);
-    t.task = &r;
+    auto t = Task(task(c), ttime::Duration(30));
 
     // task removes itself
     s.add(&t);
