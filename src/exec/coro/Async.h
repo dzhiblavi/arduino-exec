@@ -24,6 +24,9 @@ class Async;
 inline constexpr struct ignore_cancellation_t {
 } ignore_cancellation;
 
+inline constexpr struct cancellation_state_t {
+} cancellation_state;
+
 namespace detail {
 
 template <typename T>
@@ -100,6 +103,13 @@ class AsyncPromiseBase : CancellationHandler {
         AsyncPromiseBase* self;
     };
 
+    struct CancellationStateAwaitable {
+        bool await_ready() const { return true; }
+        void await_suspend(std::coroutine_handle<>) const {}
+        bool await_resume() const { return self->cancelled(); }
+        AsyncPromiseBase* self;
+    };
+
  public:
     AsyncPromiseBase() = default;
 
@@ -124,6 +134,7 @@ class AsyncPromiseBase : CancellationHandler {
     }
 
     auto await_transform(ignore_cancellation_t) { return IgnoreCancellationAwaitable{this}; }
+    auto await_transform(cancellation_state_t) { return CancellationStateAwaitable{this}; }
 
     void setCancellationSlot(CancellationSlot slot) { up_slot_ = slot; }
 
