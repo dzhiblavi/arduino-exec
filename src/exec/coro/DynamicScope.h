@@ -99,10 +99,15 @@ class DynamicScope {
             return unit;
         }
 
-        void await_suspend(std::coroutine_handle<> caller) {
+        std::coroutine_handle<> await_suspend(std::coroutine_handle<> caller) {
             self_->tasks_.iterate([](Promise& task) { task.start(); });
+            if (self_->size_ == 0) {
+                return caller;
+            }
+
             self_->caller_ = caller;
             slot_.installIfConnected(this);
+            return std::noop_coroutine();
         }
 
      private:

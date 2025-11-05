@@ -21,6 +21,26 @@ TEST_F(t_coro, join_empty) {
     TEST_ASSERT_TRUE(m.done());
 }
 
+TEST_F(t_coro, join_sync) {
+    Event e;
+
+    auto coro = [&]() -> Async<> {
+        DynamicScope scope;
+
+        scope.add(e.wait());
+        scope.add(e.wait());
+        scope.add(e.wait());
+
+        co_await scope.join();
+    };
+
+    auto m = makeManualTask(coro());
+
+    e.set();
+    m.start();
+    TEST_ASSERT_TRUE(m.done());
+}
+
 TEST_F(t_coro, join_tasks) {
     Event e;
 
