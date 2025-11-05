@@ -15,8 +15,9 @@ inline auto defer(ttime::Duration d) {
     struct [[nodiscard]] Awaitable : Runnable, supp::Pinned {
         Awaitable(ttime::Duration d) : d{d} {}
 
-        bool await_ready() const {
+        bool await_ready() {
             if (d.micros() == 0) {
+                code_ = ErrCode::Success;
                 return true;
             }
 
