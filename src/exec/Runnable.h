@@ -9,16 +9,7 @@ namespace exec {
 class [[nodiscard]] Runnable : public supp::IntrusiveForwardListNode<> {
  public:
     virtual ~Runnable() = default;
-
-    // May return a task to run immediadely after
-    [[nodiscard]] virtual Runnable* run() = 0;
-
-    void runAll() {
-        Runnable* task = run();
-        while (task != nullptr) {
-            task = task->run();
-        }
-    }
+    virtual void run() = 0;
 };
 
 [[maybe_unused]] static constexpr Runnable* noop = nullptr;
@@ -29,15 +20,7 @@ template <typename F>
 struct [[nodiscard]] RunnableWrapper : Runnable {
  public:
     RunnableWrapper(F&& closure) : closure_{std::move(closure)} {}
-
-    [[nodiscard]] Runnable* run() final {
-        if constexpr (std::same_as<decltype(closure_(this)), void>) {
-            closure_(this);
-            return noop;
-        } else {
-            return closure_(this);
-        }
-    }
+    void run() final { closure_(this); }
 
  private:
     std::remove_reference_t<F> closure_;

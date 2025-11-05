@@ -26,7 +26,7 @@ class HeapDeferService : public DeferService,
         auto now = ttime::mono::now();
 
         while (!heap_.empty() && now >= heap_.front().at) {
-            heap_.pop().task->runAll();
+            heap_.pop().task->run();
         }
     }
 

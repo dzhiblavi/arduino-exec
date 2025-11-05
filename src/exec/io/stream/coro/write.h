@@ -32,7 +32,7 @@ auto write(Print* print, const char* dst, size_t len) {
 
      private:
         // Runnable
-        Runnable* run() override {
+        void run() override {
             if (performWrite()) {
                 slot_.clearIfConnected();
                 caller_.resume();
@@ -40,8 +40,6 @@ auto write(Print* print, const char* dst, size_t len) {
                 // continue polling
                 service<Executor>()->post(this);
             }
-
-            return noop;
         }
 
         // CancellationHandler

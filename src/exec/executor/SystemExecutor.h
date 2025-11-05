@@ -19,7 +19,7 @@ class SystemExecutor : public Executor, public ServiceBase<Executor, SystemExecu
         auto q = std::move(queue_);
 
         while (!q.empty()) {
-            q.popFront()->runAll();
+            q.popFront()->run();
         }
 
         queue_.prepend(std::move(q));

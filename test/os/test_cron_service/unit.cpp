@@ -16,10 +16,7 @@ struct Task : CronTask {
         : CronTask(d, at)
         , task{task} {}
 
-    Runnable* run() override {
-        task(this);
-        return noop;
-    }
+    void run() override { task(this); }
 
     F task;
 };

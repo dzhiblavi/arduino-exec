@@ -44,10 +44,7 @@ struct SpawnPromise : Runnable {
     }
 
     // Runnable
-    Runnable* run() override {
-        handle().resume();
-        return noop;
-    }
+    void run() override { handle().resume(); }
 };
 
 template <typename T>

@@ -17,7 +17,6 @@ TEST(test_run_order) {
         return runnable([expected, &counter](auto) {
             TEST_ASSERT_EQUAL(expected, counter);
             ++counter;
-            return noop;
         });
     };
 
@@ -44,7 +43,6 @@ TEST(test_run_order_push_during_tick) {
                 exec.post(post);
             }
             ++counter;
-            return noop;
         });
     };
 
@@ -74,7 +72,7 @@ TEST(test_wake_at) {
     }
 
     SECTION("non-empty queue") {
-        auto task = runnable([](auto) { return noop; });
+        auto task = runnable([](auto) {});
         exec.post(&task);
         TEST_ASSERT_EQUAL(ttime::mono::now().micros(), exec.wakeAt().micros());
     }

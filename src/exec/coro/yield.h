@@ -24,10 +24,7 @@ inline auto yield() {
 
         constexpr Unit await_resume() { return unit; }
 
-        Runnable* run() override {
-            caller.resume();
-            return noop;
-        }
+        void run() override { caller.resume(); }
 
         std::coroutine_handle<> caller;
     };

@@ -30,7 +30,7 @@ auto read(Stream* stream, char* dst, size_t len) {
         size_t await_resume() const { return read_; }
 
         // Runnable
-        Runnable* run() override {
+        void run() override {
             if (performRead()) {
                 slot_.clearIfConnected();
                 caller_.resume();
@@ -38,8 +38,6 @@ auto read(Stream* stream, char* dst, size_t len) {
                 // continue polling
                 service<Executor>()->post(this);
             }
-
-            return noop;
         }
 
         // CancellationHandler

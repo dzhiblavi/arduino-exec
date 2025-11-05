@@ -44,12 +44,11 @@ inline auto wait(ttime::Duration d) {
         }
 
         // called when timer went off
-        Runnable* run() override {
+        void run() override {
             DASSERT(code_ == ErrCode::Unknown);
             slot_.clearIfConnected();
             code_ = ErrCode::Success;
             awaiter_.resume();
-            return noop;
         }
 
         // called when cancellation is signalled

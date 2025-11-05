@@ -26,7 +26,7 @@ TEST_F(t_spawn, simple_spawn) {
 
     spawn(coro());
     TEST_ASSERT_EQUAL(1, executor.queued.size());
-    executor.queued.popFront()->runAll();
+    executor.queued.popFront()->run();
     TEST_ASSERT_FALSE(done);
 
     event.fireOnce();

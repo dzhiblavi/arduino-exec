@@ -14,10 +14,7 @@ auto makeTask(int& cnt) {
     struct Task : TimerEntry {
         Task(int& cnt) : cnt{cnt} {}
 
-        Runnable* run() override {
-            ++cnt;
-            return noop;
-        }
+        void run() override { ++cnt; }
 
         int& cnt;
     };

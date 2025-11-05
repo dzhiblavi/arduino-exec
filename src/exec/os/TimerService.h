@@ -36,7 +36,7 @@ class HeapTimerService : public TimerService,
         auto now = ttime::mono::now();
 
         while (!heap_.empty() && now >= heap_.front()->at) {
-            heap_.pop()->runAll();
+            heap_.pop()->run();
         }
     }
 

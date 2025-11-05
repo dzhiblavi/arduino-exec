@@ -68,12 +68,12 @@ TEST_F(t_read, test_blocking) {
     TEST_ASSERT_EQUAL(1, executor.queued.size());
 
     push("ab");
-    executor.queued.popFront()->runAll();
+    executor.queued.popFront()->run();
     TEST_ASSERT_FALSE(coro.done());
     TEST_ASSERT_EQUAL(1, executor.queued.size());
 
     push("cde");
-    executor.queued.popFront()->runAll();
+    executor.queued.popFront()->run();
     TEST_ASSERT_TRUE(coro.done());
     TEST_ASSERT_TRUE(executor.queued.empty());
 }
@@ -92,7 +92,7 @@ TEST_F(t_read, test_connects_cancellation) {
     TEST_ASSERT_FALSE(coro.done());
 
     push("abcd");
-    executor.queued.popFront()->runAll();
+    executor.queued.popFront()->run();
     TEST_ASSERT_TRUE(coro.done());
     TEST_ASSERT_FALSE(sig.hasHandler());
 }
@@ -113,7 +113,7 @@ TEST_F(t_read, test_cancelled) {
     TEST_ASSERT_TRUE(sig.hasHandler());
     TEST_ASSERT_EQUAL(1, executor.queued.size());
 
-    executor.queued.popFront()->runAll();
+    executor.queued.popFront()->run();
     TEST_ASSERT_FALSE(coro.done());
 
     sig.emitSync();  // should not unblock
@@ -121,7 +121,7 @@ TEST_F(t_read, test_cancelled) {
     TEST_ASSERT_FALSE(coro.done());
     TEST_ASSERT_EQUAL(1, executor.queued.size());
 
-    executor.queued.popFront()->runAll();  // this should finish the read()
+    executor.queued.popFront()->run();  // this should finish the read()
     TEST_ASSERT_TRUE(coro.done());
 }
 
@@ -140,14 +140,14 @@ TEST_F(t_read, test_with_timeout_expired) {
     TEST_ASSERT_EQUAL(10, timerservice.wakeAt().micros());
 
     push("c");
-    executor.queued.popFront()->runAll();
+    executor.queued.popFront()->run();
     TEST_ASSERT_EQUAL(1, executor.queued.size());
 
     ttime::mono::advance(ttime::Duration(10));
     timerservice.tick();  // should cancel read()
     TEST_ASSERT_FALSE(coro.done());
 
-    executor.queued.popFront()->runAll();
+    executor.queued.popFront()->run();
     TEST_ASSERT_TRUE(coro.done());
 }
 
@@ -166,7 +166,7 @@ TEST_F(t_read, test_with_timeout_succeeded) {
     TEST_ASSERT_EQUAL(10, timerservice.wakeAt().micros());
 
     push("cd");
-    executor.queued.popFront()->runAll();  // should cancel timer
+    executor.queued.popFront()->run();  // should cancel timer
     TEST_ASSERT_TRUE(executor.queued.empty());
     TEST_ASSERT_EQUAL(ttime::Time::max().micros(), timerservice.wakeAt().micros());
     TEST_ASSERT_TRUE(coro.done());

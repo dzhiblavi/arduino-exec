@@ -38,10 +38,7 @@ inline auto defer(ttime::Duration d) {
             return code_;
         }
 
-        Runnable* run() override {
-            caller.resume();
-            return noop;
-        }
+        void run() override { caller.resume(); }
 
         const ttime::Duration d;
         std::coroutine_handle<> caller;
