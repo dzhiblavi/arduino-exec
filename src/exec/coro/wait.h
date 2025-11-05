@@ -12,7 +12,7 @@
 namespace exec {
 
 // Cancellable delay
-auto wait(ttime::Duration d) {
+inline auto wait(ttime::Duration d) {
     struct [[nodiscard]] Awaitable : Runnable, CancellationHandler {
         Awaitable(ttime::Duration d, CancellationSlot slot) : d{d}, slot_{slot} {}
 

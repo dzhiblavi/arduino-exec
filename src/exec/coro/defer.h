@@ -11,7 +11,7 @@
 namespace exec {
 
 // Not cancellable
-auto defer(ttime::Duration d) {
+inline auto defer(ttime::Duration d) {
     struct [[nodiscard]] Awaitable : Runnable, supp::Pinned {
         Awaitable(ttime::Duration d) : d{d} {}
 

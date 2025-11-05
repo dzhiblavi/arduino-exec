@@ -11,7 +11,7 @@
 namespace exec {
 
 // Not cancellable
-auto yield() {
+inline auto yield() {
     struct [[nodiscard]] Awaitable : Runnable, supp::Pinned {
         Awaitable() = default;
 
