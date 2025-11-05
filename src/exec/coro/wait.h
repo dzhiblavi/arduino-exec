@@ -13,19 +13,30 @@ namespace exec {
 
 // Cancellable delay
 auto wait(ttime::Duration d) {
-    struct [[nodiscard]] Awaitable : Runnable, CancellationHandler, supp::NonCopyable {
+    struct [[nodiscard]] Awaitable : Runnable, CancellationHandler {
         Awaitable(ttime::Duration d, CancellationSlot slot) : d{d}, slot_{slot} {}
 
         bool await_ready() {
-            return d.micros() == 0;
+            if (d.micros() == 0) {
+                code_ = ErrCode::Success;
+                return true;
+            }
+
+            return false;
         }
 
-        void await_suspend(std::coroutine_handle<> awaiter) {
-            slot_.installIfConnected(this);
-            awaiter_ = awaiter;
+        std::coroutine_handle<> await_suspend(std::coroutine_handle<> awaiter) {
             entry_.at = ttime::mono::now() + d;
             entry_.task = this;
-            service<TimerService>()->add(&entry_);
+
+            if (!service<TimerService>()->add(&entry_)) {
+                code_ = ErrCode::Exhausted;
+                return awaiter;
+            }
+
+            slot_.installIfConnected(this);
+            awaiter_ = awaiter;
+            return std::noop_coroutine();
         }
 
         ErrCode await_resume() const {

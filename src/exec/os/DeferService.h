@@ -12,16 +12,14 @@ namespace exec {
 class DeferService {
  public:
     virtual ~DeferService() = default;
-    virtual void defer(Runnable* r, ttime::Time at) = 0;
+    [[nodiscard]] virtual bool defer(Runnable* r, ttime::Time at) = 0;
 };
 
 template <int MaxDefers>
 class HeapDeferService : public DeferService,
                          public ServiceBase<DeferService, HeapDeferService<MaxDefers>> {
  public:
-    void defer(Runnable* r, ttime::Time at) override {
-        heap_.push(Defer{at, r});
-    }
+    bool defer(Runnable* r, ttime::Time at) override { return heap_.push(Defer{at, r}); }
 
     // Service
     void tick() override {

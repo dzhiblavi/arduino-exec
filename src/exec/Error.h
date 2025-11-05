@@ -4,10 +4,11 @@
 
 namespace exec {
 
-enum class ErrCode : uint8_t {
+enum class [[nodiscard]] ErrCode : uint8_t {
     Unknown = 0,
     OutOfMemory,
     Cancelled,
+    Exhausted,
     Success,
 };
 

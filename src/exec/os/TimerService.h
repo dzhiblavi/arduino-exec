@@ -18,17 +18,17 @@ class TimerService {
  public:
     virtual ~TimerService() = default;
 
-    virtual void add(TimerEntry* t) = 0;
-    virtual bool remove(TimerEntry* t) = 0;
+    [[nodiscard]] virtual bool add(TimerEntry* t) = 0;
+    [[nodiscard]] virtual bool remove(TimerEntry* t) = 0;
 };
 
 template <int MaxTimers>
 class HeapTimerService : public TimerService,
                          public ServiceBase<TimerService, HeapTimerService<MaxTimers>> {
  public:
-    void add(TimerEntry* t) override {
+    bool add(TimerEntry* t) override {
         DASSERT(!t->connected());
-        heap_.push(t);
+        return heap_.push(t);
     }
 
     bool remove(TimerEntry* t) override {

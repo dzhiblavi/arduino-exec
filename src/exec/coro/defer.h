@@ -1,6 +1,6 @@
 #pragma once
 
-#include "exec/Unit.h"
+#include "exec/Error.h"
 #include "exec/os/DeferService.h"
 
 #include <supp/Pinned.h>
@@ -15,14 +15,27 @@ auto defer(ttime::Duration d) {
     struct [[nodiscard]] Awaitable : Runnable, supp::Pinned {
         Awaitable(ttime::Duration d) : d{d} {}
 
-        bool await_ready() const { return d.micros() == 0; }
+        bool await_ready() const {
+            if (d.micros() == 0) {
+                return true;
+            }
 
-        void await_suspend(std::coroutine_handle<> caller) {
-            this->caller = caller;
-            service<DeferService>()->defer(this, ttime::mono::now() + d);
+            return false;
         }
 
-        Unit await_resume() const { return unit; }
+        std::coroutine_handle<> await_suspend(std::coroutine_handle<> caller) {
+            if (!service<DeferService>()->defer(this, ttime::mono::now() + d)) {
+                return caller;
+            }
+
+            this->caller = caller;
+            return std::noop_coroutine();
+        }
+
+        ErrCode await_resume() const {
+            DASSERT(code_ != ErrCode::Unknown);
+            return code_;
+        }
 
         Runnable* run() override {
             caller.resume();
@@ -31,6 +44,7 @@ auto defer(ttime::Duration d) {
 
         const ttime::Duration d;
         std::coroutine_handle<> caller;
+        ErrCode code_ = ErrCode::Unknown;
     };
 
     struct Op {
