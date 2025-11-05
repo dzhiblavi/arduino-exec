@@ -36,12 +36,12 @@ class DynamicScope {
                 bool await_ready() noexcept { return false; }
                 void await_resume() noexcept {}
 
-                std::coroutine_handle<> await_suspend(
-                    std::coroutine_handle<Promise> self) noexcept {
-                    auto& promise = self.promise();
-                    promise.unlink();
+                std::coroutine_handle<> await_suspend(coroutine_handle_t self) noexcept {
+                    Promise& promise = self.promise();
+                    DynamicScope* scope = promise.scope;
+                    DASSERT(scope, "dropped task has finished");
 
-                    auto scope = promise.scope;
+                    promise.unlink();
                     self.destroy();
                     return scope->arrived();
                 }
@@ -57,19 +57,19 @@ class DynamicScope {
         }
 
         void start() {
-            DASSERT(!started);
-            started = true;
-            coroutine_handle_t::from_promise(*this).resume();
+            DASSERT(scope);
+            handle().resume();
         }
 
         void drop() {
-            DASSERT(!started);
-            coroutine_handle_t::from_promise(*this).destroy();
+            DASSERT(scope);
+            scope = nullptr;
+            handle().destroy();
         }
 
         void cancel() { sig.emit(); }
+        coroutine_handle_t handle() { return coroutine_handle_t::from_promise(*this); }
 
-        bool started = false;
         DynamicScope* scope;
         CancellationSignal sig{};
     };
