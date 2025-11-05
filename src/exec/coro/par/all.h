@@ -143,7 +143,7 @@ struct [[nodiscard]] All : supp::NonCopyable {
     using ResultType = std::tuple<awaitable_result_t<Tasks>...>;
 
     All(Tasks... tasks) : tasks_(std::move(tasks)...) {}
-    All(All&&) = default;
+    All(All&& r) noexcept : tasks_{std::move(r.tasks_)} {}
 
     // CancellableAwaitable
     All& setCancellationSlot(CancellationSlot slot) {

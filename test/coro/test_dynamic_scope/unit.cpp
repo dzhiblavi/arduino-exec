@@ -144,13 +144,14 @@ TEST_F(t_coro, cancel_partial_complete) {
 
 TEST_F(t_coro, drop_join) {
     CancellationSignal sig;
-    Event e1, e2;
+    Event e;
 
+    auto task = [&]() -> Async<int> { co_return 10; };
     auto coro = [&]() -> Async<> {
-        co_await e1.wait();
+        co_await e.wait();
 
         DynamicScope scope;
-        scope.add(e2.wait());
+        scope.add(task());
         co_await scope.join();
     };
 

@@ -210,8 +210,16 @@ class [[nodiscard]] Async : supp::NonCopyable {
 
     Async() = default;
     Async(std::coroutine_handle<promise_type> coroutine) : coroutine_(coroutine) {}
-    Async(Async&& t) noexcept : coroutine_(std::exchange(t.coroutine_, nullptr)) {}
-    ~Async() { DASSERT(!coroutine_, F("Async<T> has not been consumed")); }
+    Async(Async&& r) noexcept : coroutine_(std::exchange(r.coroutine_, nullptr)) {}
+
+    ~Async() {
+        if (!coroutine_) {
+            return;
+        }
+
+        // Async<T> has not been consumed
+        coroutine_.destroy();
+    }
 
     // CancellableAwaitable
     Async& setCancellationSlot(CancellationSlot slot) & {

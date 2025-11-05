@@ -84,7 +84,7 @@ class DynamicScope {
     };
 
     template <Awaitable A>
-    static Task makeTask(A&& awaitable, DynamicScope* /*self*/) {
+    static Task makeTask(A awaitable, DynamicScope* /*self*/) {
         // self is passed to Promise's constructor
         co_return co_await std::move(awaitable);
     }
