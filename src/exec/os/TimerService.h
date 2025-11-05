@@ -9,9 +9,8 @@
 
 namespace exec {
 
-struct TimerEntry : supp::RandomAccessPriorityQueueNode {
+struct TimerEntry : Runnable, supp::RandomAccessPriorityQueueNode {
     ttime::Time at;
-    Runnable* task = nullptr;
 };
 
 class TimerService {
@@ -31,15 +30,13 @@ class HeapTimerService : public TimerService,
         return heap_.push(t);
     }
 
-    bool remove(TimerEntry* t) override {
-        return heap_.erase(t);
-    }
+    bool remove(TimerEntry* t) override { return heap_.erase(t); }
 
     void tick() override {
         auto now = ttime::mono::now();
 
         while (!heap_.empty() && now >= heap_.front()->at) {
-            heap_.pop()->task->runAll();
+            heap_.pop()->runAll();
         }
     }
 

@@ -13,7 +13,7 @@ namespace exec {
 
 // Cancellable delay
 inline auto wait(ttime::Duration d) {
-    struct [[nodiscard]] Awaitable : Runnable, CancellationHandler {
+    struct [[nodiscard]] Awaitable : TimerEntry, CancellationHandler {
         Awaitable(ttime::Duration d, CancellationSlot slot) : d{d}, slot_{slot} {}
 
         bool await_ready() {
@@ -26,10 +26,9 @@ inline auto wait(ttime::Duration d) {
         }
 
         std::coroutine_handle<> await_suspend(std::coroutine_handle<> awaiter) {
-            entry_.at = ttime::mono::now() + d;
-            entry_.task = this;
+            at = ttime::mono::now() + d;
 
-            if (!service<TimerService>()->add(&entry_)) {
+            if (!service<TimerService>()->add(this)) {
                 code_ = ErrCode::Exhausted;
                 return awaiter;
             }
@@ -55,7 +54,7 @@ inline auto wait(ttime::Duration d) {
 
         // called when cancellation is signalled
         Runnable* cancel() override {
-            if (!service<TimerService>()->remove(&entry_)) {
+            if (!service<TimerService>()->remove(this)) {
                 // Timer has already went off or has been cancelled, nothing to do here
                 return noop;
             }
@@ -69,7 +68,6 @@ inline auto wait(ttime::Duration d) {
         CancellationSlot slot_;
         ErrCode code_ = ErrCode::Unknown;
         std::coroutine_handle<> awaiter_;
-        TimerEntry entry_;
     };
 
     struct Op {
