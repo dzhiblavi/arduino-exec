@@ -174,7 +174,7 @@ TEST_F(t_async, connects_cancellation) {
     CancellationSignal sig;
 
     auto make_task = [&]() -> Async<> {  //
-        co_await event.wait();
+        (void)co_await event.wait();
     };
     auto task = makeManualTask(make_task().setCancellationSlot(sig.slot()));
 
@@ -191,7 +191,7 @@ TEST_F(t_async, cancel_while_blocked) {
     CancellationSignal sig;
 
     auto make_task = [&]() -> Async<> {  //
-        co_await event.wait();
+        (void)co_await event.wait();
     };
     auto task = makeManualTask(make_task().setCancellationSlot(sig.slot()));
 
@@ -209,7 +209,7 @@ TEST_F(t_async, chain_cancellation) {
     CancellationSignal sig;
 
     auto task = [&]() -> Async<> {  //
-        co_await event.wait();
+        (void)co_await event.wait();
     };
 
     auto main = [&]() -> Async<> {

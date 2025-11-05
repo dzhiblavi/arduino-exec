@@ -148,7 +148,7 @@ TEST_F(t_coro, drop_join) {
 
     auto task = [&]() -> Async<int> { co_return 10; };
     auto coro = [&]() -> Async<> {
-        co_await e.wait();
+        (void)co_await e.wait();
 
         DynamicScope scope;
         scope.add(task());
@@ -169,7 +169,7 @@ TEST_F(t_coro, drop_join_sync) {
     Event e1, e2;
 
     auto coro = [&]() -> Async<> {
-        co_await e1.wait();
+        (void)co_await e1.wait();
 
         DynamicScope scope;
         scope.add(e2.wait());

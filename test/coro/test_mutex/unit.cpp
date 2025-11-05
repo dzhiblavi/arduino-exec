@@ -72,7 +72,7 @@ TEST_F(t_mutex, lock_queue) {
     auto make_coro = [&]() -> Async<> {
         auto guard = co_await m.lock();
         TEST_ASSERT_TRUE(guard);
-        co_await e.wait();
+        (void)co_await e.wait();
     };
 
     auto c1 = makeManualTask(make_coro());
@@ -145,7 +145,7 @@ TEST_F(t_mutex, lock_queue_cancelled) {
     auto make_coro = [&]() -> Async<> {
         auto guard = co_await m.lock();
         TEST_ASSERT_TRUE(guard);
-        co_await e.wait();
+        (void)co_await e.wait();
     };
 
     auto c1 = makeManualTask(make_coro());

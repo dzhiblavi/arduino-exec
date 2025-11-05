@@ -117,7 +117,7 @@ TEST_F(t_event, connects_cancellation) {
     CancellationSignal sig;
 
     auto coro = makeManualTask([&]() -> Async<> {  //
-        co_await m.wait().setCancellationSlot(sig.slot());
+        (void)co_await m.wait().setCancellationSlot(sig.slot());
     }());
 
     coro.start();

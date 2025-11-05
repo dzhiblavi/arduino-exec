@@ -15,9 +15,6 @@ namespace exec {
 namespace detail {
 
 template <typename T>
-struct SpawnTask;
-
-template <typename T>
 struct SpawnPromise : Runnable {
     using coroutine_handle_t = std::coroutine_handle<SpawnPromise<T>>;
 
@@ -63,7 +60,7 @@ struct SpawnTask : supp::NonCopyable {
     SpawnTask(SpawnTask&& r) noexcept : coroutine_{std::exchange(r.coroutine_, nullptr)} {}
     ~SpawnTask() { DASSERT(!coroutine_, F("SpawnTask<T> not spawned")); }
 
-    SpawnPromise<T>* promise() { return &std::exchange(coroutine_, nullptr).promise(); }
+    SpawnPromise<T>* promise() && { return &std::exchange(coroutine_, nullptr).promise(); }
 
  private:
     coroutine_handle_t coroutine_;

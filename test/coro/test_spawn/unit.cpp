@@ -1,6 +1,7 @@
 #include "Executor.h"
 #include "coro/test.h"
 
+#include <exec/coro/Async.h>
 #include <exec/coro/spawn.h>
 #include <exec/coro/sync/Event.h>
 

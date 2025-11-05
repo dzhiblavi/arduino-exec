@@ -55,7 +55,7 @@ TEST_F(t_semaphore, acquire_queue) {
         LINFO("1");
         TEST_ASSERT_EQUAL(ErrCode::Success, co_await m.acquire());
         LINFO("2");
-        co_await e.wait();
+        (void)co_await e.wait();
         LINFO("3");
         m.release();
     };
@@ -85,7 +85,7 @@ TEST_F(t_semaphore, connects_cancellation) {
     CancellationSignal sig;
 
     auto coro = makeManualTask([&]() -> Async<> {  //
-        co_await m.acquire().setCancellationSlot(sig.slot());
+        (void)co_await m.acquire().setCancellationSlot(sig.slot());
     }());
 
     m.tryAcquire();
@@ -124,7 +124,7 @@ TEST_F(t_semaphore, lock_queue_cancelled) {
 
     auto make_coro = [&]() -> Async<> {
         TEST_ASSERT_EQUAL(ErrCode::Success, co_await m.acquire());
-        co_await e.wait();
+        (void)co_await e.wait();
         m.release();
     };
 
