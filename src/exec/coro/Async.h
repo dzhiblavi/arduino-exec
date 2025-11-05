@@ -153,10 +153,9 @@ class AsyncPromiseBase : CancellationHandler {
 
  private:
     // CancellationHandler
-    Runnable* cancel() override {
+    std::coroutine_handle<> cancel() override {
         result_->setError(ErrCode::Cancelled);
-        down_sig_.emit();
-        return noop;
+        return down_sig_.emit();
     }
 
     bool cancelled() const { return result_->code() == ErrCode::Cancelled; }

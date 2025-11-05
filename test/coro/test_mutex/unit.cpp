@@ -129,7 +129,7 @@ TEST_F(t_mutex, cancelled) {
 
     coro.start();
     TEST_ASSERT_FALSE(coro.done());  // blocked on lock()
-    TEST_ASSERT_EQUAL(noop, sig.emitRaw());
+    sig.emitSync();
     TEST_ASSERT_TRUE(coro.done());  // released
 }
 
@@ -159,7 +159,7 @@ TEST_F(t_mutex, lock_queue_cancelled) {
     TEST_ASSERT_FALSE(c2.done());  // blocked
     TEST_ASSERT_FALSE(c3.done());  // blocked
 
-    sig.emit();  // cancel c2
+    sig.emitSync();  // cancel c2
     TEST_ASSERT_FALSE(c1.done());
     TEST_ASSERT_TRUE(c2.done());   // unblocked with no lock
     TEST_ASSERT_FALSE(c3.done());  // blocked

@@ -175,7 +175,7 @@ TEST_F(t_mpmc_channel, receive_cancellation) {
     TEST_ASSERT_TRUE(sig.hasHandler());
     TEST_ASSERT_FALSE(coro.done());
 
-    sig.emit();
+    sig.emitSync();
     TEST_ASSERT_TRUE(coro.done());
 }
 
@@ -198,7 +198,7 @@ TEST_F(t_mpmc_channel, send_cancellation) {
     TEST_ASSERT_TRUE(sig.hasHandler());
     TEST_ASSERT_FALSE(coro.done());
 
-    sig.emit();
+    sig.emitSync();
     TEST_ASSERT_TRUE(coro.done());
 }
 

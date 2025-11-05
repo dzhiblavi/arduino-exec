@@ -82,7 +82,7 @@ TEST_F(t_coro, cancel_join) {
     m.start();
     TEST_ASSERT_FALSE(m.done());
 
-    sig.emit();
+    sig.emitSync();
     TEST_ASSERT_TRUE(m.done());
     TEST_ASSERT_FALSE(sig.hasHandler());
 }
@@ -137,7 +137,7 @@ TEST_F(t_coro, cancel_partial_complete) {
     }
 
     TEST_ASSERT_FALSE(m.done());
-    sig.emit();
+    sig.emitSync();
     TEST_ASSERT_TRUE(m.done());
     TEST_ASSERT_FALSE(sig.hasHandler());
 }
@@ -160,7 +160,7 @@ TEST_F(t_coro, drop_join) {
     m.start();
     TEST_ASSERT_FALSE(m.done());
 
-    sig.emit();
+    sig.emitSync();
     TEST_ASSERT_TRUE(m.done());
 }
 
@@ -182,7 +182,7 @@ TEST_F(t_coro, drop_join_sync) {
     m.start();
     TEST_ASSERT_FALSE(m.done());
 
-    sig.emit();
+    sig.emitSync();
     TEST_ASSERT_TRUE(m.done());
 }
 

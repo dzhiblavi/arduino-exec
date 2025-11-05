@@ -53,15 +53,14 @@ inline auto wait(ttime::Duration d) {
         }
 
         // called when cancellation is signalled
-        Runnable* cancel() override {
+        std::coroutine_handle<> cancel() override {
             if (!service<TimerService>()->remove(this)) {
                 // Timer has already went off or has been cancelled, nothing to do here
-                return noop;
+                return std::noop_coroutine();
             }
 
             code_ = ErrCode::Cancelled;
-            awaiter_.resume();
-            return noop;
+            return awaiter_;
         }
 
         const ttime::Duration d;

@@ -67,7 +67,7 @@ class DynamicScope {
             handle().destroy();
         }
 
-        void cancel() { sig.emit(); }
+        std::coroutine_handle<> cancel() { return sig.emit(); }
         coroutine_handle_t handle() { return coroutine_handle_t::from_promise(*this); }
 
         DynamicScope* scope;
@@ -111,19 +111,18 @@ class DynamicScope {
         }
 
      private:
-        Runnable* cancel() override {
+        std::coroutine_handle<> cancel() override {
             DASSERT(self_->caller_ != nullptr);
 
             auto a_caller = std::exchange(self_->caller_, nullptr);
-            self_->tasks_.iterate([](Promise& task) { task.cancel(); });
+            self_->tasks_.iterate([](Promise& task) { task.cancel().resume(); });
 
             if (self_->size_ == 0) {
-                a_caller.resume();
-            } else {
-                self_->caller_ = a_caller;
+                return a_caller;
             }
 
-            return noop;
+            self_->caller_ = a_caller;
+            return std::noop_coroutine();
         }
 
         DynamicScope* self_;

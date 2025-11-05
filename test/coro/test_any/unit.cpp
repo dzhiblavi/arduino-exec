@@ -68,7 +68,7 @@ TEST_F(t_coro, cancel_none_completed) {
 
     coro.start();
     TEST_ASSERT_FALSE(coro.done());
-    TEST_ASSERT_EQUAL(noop, sig.emitRaw());
+    sig.emitSync();
     TEST_ASSERT_TRUE(coro.done());
 }
 
@@ -86,7 +86,7 @@ TEST_F(t_coro, cancel_partially_completed) {
 
     coro.start();
     TEST_ASSERT_TRUE(coro.done());
-    TEST_ASSERT_EQUAL(noop, sig.emitRaw());
+    TEST_ASSERT_TRUE(std::noop_coroutine() == sig.emit());
 }
 
 TEST_F(t_coro, cancel_both_completed) {
@@ -103,7 +103,7 @@ TEST_F(t_coro, cancel_both_completed) {
 
     coro.start();
     TEST_ASSERT_TRUE(coro.done());
-    TEST_ASSERT_EQUAL(noop, sig.emitRaw());
+    TEST_ASSERT_TRUE(std::noop_coroutine() == sig.emit());
 }
 
 TEST_F(t_coro, combine_any_with_any_outer_cancelled) {
@@ -123,7 +123,7 @@ TEST_F(t_coro, combine_any_with_any_outer_cancelled) {
     coro.start();
     TEST_ASSERT_FALSE(coro.done());
 
-    sig.emit();
+    sig.emitSync();
     TEST_ASSERT_TRUE(coro.done());
 }
 
@@ -164,7 +164,7 @@ TEST_F(t_coro, cancel_one_child_releases_other) {
     }
 
     SECTION("cancel external") {
-        sig.emit();
+        sig.emitSync();
         TEST_ASSERT_TRUE(coro.done());
         TEST_ASSERT_EQUAL(ErrCode::Cancelled, wait_ec);
         TEST_ASSERT_TRUE(cr.hasValue());

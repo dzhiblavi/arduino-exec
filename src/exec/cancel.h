@@ -1,17 +1,18 @@
 #pragma once
 
-#include "exec/Runnable.h"
-
 #include <supp/Pinned.h>
 #include <supp/verify.h>
 
 #include <logging/log.h>
 
+#include <coroutine>
+#include <utility>
+
 namespace exec {
 
 struct CancellationHandler : supp::Pinned {
     virtual ~CancellationHandler() = default;
-    [[nodiscard]] virtual Runnable* cancel() = 0;
+    [[nodiscard]] virtual std::coroutine_handle<> cancel() = 0;
 };
 
 class CancellationSlot {
@@ -27,7 +28,6 @@ class CancellationSlot {
         : handler_{std::exchange(r.handler_, nullptr)} {}
 
     bool isConnected() const { return handler_ != nullptr; }
-
     bool hasHandler() const { return handler_ != nullptr && *handler_ != nullptr; }
 
     void installIfConnected(CancellationHandler* handler) {
@@ -46,7 +46,6 @@ class CancellationSlot {
     CancellationSlot(CancellationHandler** handler) : handler_{handler} {}
 
     void install(CancellationHandler* handler) { *handler_ = handler; }
-
     void clear() { *handler_ = nullptr; }
 
     CancellationHandler** handler_ = nullptr;
@@ -56,15 +55,11 @@ class CancellationSlot {
 
 class CancellationSignal : supp::Pinned {
  public:
-    void emit() {
-        if (auto* task = emitRaw()) {
-            task->runAll();
-        }
-    }
+    void emitSync() { emit().resume(); }
 
-    [[nodiscard]] Runnable* emitRaw() {
+    [[nodiscard]] std::coroutine_handle<> emit() {
         if (!handler_) {
-            return noop;
+            return std::noop_coroutine();
         }
 
         // non-reentrant emit
@@ -72,9 +67,7 @@ class CancellationSignal : supp::Pinned {
     }
 
     CancellationSlot slot() { return {&handler_}; }
-
     void clear() { handler_ = nullptr; }
-
     bool hasHandler() const { return handler_ != nullptr; }
 
  private:

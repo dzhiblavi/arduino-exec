@@ -39,22 +39,21 @@ struct AllState : CancellationHandler {
     }
 
     // CancellationHandler
-    Runnable* cancel() override {
+    std::coroutine_handle<> cancel() override {
         DASSERT(caller != nullptr);
         auto a_caller = std::exchange(caller, std::noop_coroutine());
 
         for (auto& sig : child_signals_) {
             // cannot complete because caller is extracted
-            sig.emit();
+            sig.emitSync();
         }
 
         if (all_done()) {
-            a_caller.resume();
-        } else {
-            caller = a_caller;
+            return a_caller;
         }
 
-        return noop;
+        caller = a_caller;
+        return std::noop_coroutine();
     }
 
     template <size_t I, typename U>

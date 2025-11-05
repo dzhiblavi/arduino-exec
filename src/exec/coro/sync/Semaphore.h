@@ -23,9 +23,7 @@ class Semaphore : supp::NonCopyable {
         return true;
     }
 
-    auto acquire() {
-        return Acquire{this};
-    }
+    auto acquire() { return Acquire{this}; }
 
     void release() {
         if (counter_++ != 0 || parked_.empty()) {
@@ -40,9 +38,7 @@ class Semaphore : supp::NonCopyable {
     struct Awaitable : CancellationHandler, supp::IntrusiveListNode {
         explicit Awaitable(Semaphore* self, CancellationSlot slot) : self_{self}, slot_{slot} {}
 
-        bool await_ready() {
-            return self_->tryAcquire();
-        }
+        bool await_ready() { return self_->tryAcquire(); }
 
         void await_suspend(std::coroutine_handle<> caller) {
             slot_.installIfConnected(this);
@@ -55,11 +51,10 @@ class Semaphore : supp::NonCopyable {
         }
 
         // CancellationHandler
-        Runnable* cancel() override {
+        std::coroutine_handle<> cancel() override {
             unlink();
             self_ = nullptr;
-            caller_.resume();
-            return noop;
+            return caller_;
         }
 
         void takeSemaphore() {
@@ -82,9 +77,7 @@ class Semaphore : supp::NonCopyable {
             return *this;
         }
 
-        auto operator co_await() {
-            return Awaitable{self_, slot_};
-        }
+        auto operator co_await() { return Awaitable{self_, slot_}; }
 
      private:
         Semaphore* self_;

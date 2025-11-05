@@ -110,7 +110,7 @@ TEST_F(t_semaphore, cancelled) {
 
     coro.start();
     TEST_ASSERT_FALSE(coro.done());  // blocked on lock()
-    TEST_ASSERT_EQUAL(noop, sig.emitRaw());
+    sig.emitSync();
     TEST_ASSERT_TRUE(coro.done());  // released
 }
 
@@ -140,7 +140,7 @@ TEST_F(t_semaphore, lock_queue_cancelled) {
     TEST_ASSERT_FALSE(c2.done());  // blocked on m.acquire
     TEST_ASSERT_FALSE(c3.done());  // blocked on e.wait
 
-    sig.emit();                    // cancel c2
+    sig.emitSync();                // cancel c2
     TEST_ASSERT_FALSE(c1.done());  // blocked on e.wait
     TEST_ASSERT_FALSE(c2.done());  // blocked on e.wait
     TEST_ASSERT_TRUE(c3.done());   // unblocked with no lock

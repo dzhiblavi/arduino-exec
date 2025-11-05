@@ -48,7 +48,7 @@ struct AnyState : CancellationHandler {
         }
 
         for (auto& sig : child_signals_) {
-            sig.emit();
+            sig.emitSync();
         }
 
         return all_done();
@@ -63,10 +63,7 @@ struct AnyState : CancellationHandler {
     }
 
     // CancellationHandler
-    Runnable* cancel() override {
-        doCancel().resume();
-        return noop;
-    }
+    std::coroutine_handle<> cancel() override { return doCancel(); }
 
     std::coroutine_handle<> doCancel() {
         DASSERT(caller != nullptr);
@@ -74,7 +71,7 @@ struct AnyState : CancellationHandler {
 
         for (auto& sig : child_signals_) {
             // cannot complete because caller is extracted
-            sig.emit();
+            sig.emitSync();
         }
 
         if (all_done()) {

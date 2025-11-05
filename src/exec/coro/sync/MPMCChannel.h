@@ -2,7 +2,6 @@
 
 #include "exec/Error.h"
 #include "exec/Result.h"
-#include "exec/Runnable.h"
 #include "exec/Unit.h"
 #include "exec/cancel.h"
 
@@ -33,11 +32,10 @@ class MPMCChannel {
 
      protected:
         // CancellationHandler
-        Runnable* cancel() override {
+        std::coroutine_handle<> cancel() override {
             unlink();
             self = nullptr;
-            caller.resume();
-            return noop;
+            return caller;
         }
 
         MPMCChannel* self;

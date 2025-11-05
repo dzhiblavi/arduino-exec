@@ -122,7 +122,7 @@ TEST_F(t_async, cancellation) {
     task.start();
     TEST_ASSERT_FALSE(task.done());
 
-    sig.emit();
+    sig.emitSync();
     TEST_ASSERT_TRUE(task.done());
 }
 
@@ -147,7 +147,7 @@ TEST_F(t_async, cancellation_ignored) {
     task.start();
     TEST_ASSERT_FALSE(task.done());
 
-    sig.emit();
+    sig.emitSync();
     TEST_ASSERT_FALSE(sig.hasHandler());
     TEST_ASSERT_FALSE(task.done());
 
@@ -195,12 +195,12 @@ TEST_F(t_async, cancel_while_blocked) {
     };
     auto task = makeManualTask(make_task().setCancellationSlot(sig.slot()));
 
-    sig.emit();  // not yet started
+    sig.emitSync();  // not yet started
     TEST_ASSERT_FALSE(task.done());
 
     task.start();  // installs cancellation and blocks
     TEST_ASSERT_FALSE(task.done());
-    sig.emit();  // will cancel event.wait()
+    sig.emitSync();  // will cancel event.wait()
     TEST_ASSERT_TRUE(task.done());
 }
 
@@ -230,7 +230,7 @@ TEST_F(t_async, chain_cancellation) {
     }
 
     SECTION("inner operation is cancelled") {
-        sig.emit();
+        sig.emitSync();
         TEST_ASSERT_TRUE(t.done());
     }
 }
@@ -286,7 +286,7 @@ TEST_F(t_async, multiple_suspension_points) {
     t.start();
 
     event.fireOnce();
-    sig.emit();
+    sig.emitSync();
 
     TEST_ASSERT_TRUE(t.done());
     TEST_ASSERT_EQUAL(3, i);

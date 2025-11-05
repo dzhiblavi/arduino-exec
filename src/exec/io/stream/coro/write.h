@@ -20,9 +20,7 @@ auto write(Print* print, const char* dst, size_t len) {
             , len_{len}
             , slot_{slot} {}
 
-        bool await_ready() {
-            return performWrite();
-        }
+        bool await_ready() { return performWrite(); }
 
         void await_suspend(std::coroutine_handle<> caller) {
             slot_.installIfConnected(this);
@@ -30,9 +28,7 @@ auto write(Print* print, const char* dst, size_t len) {
             service<Executor>()->post(this);
         }
 
-        size_t await_resume() const {
-            return wrote_;
-        }
+        size_t await_resume() const { return wrote_; }
 
      private:
         // Runnable
@@ -49,10 +45,10 @@ auto write(Print* print, const char* dst, size_t len) {
         }
 
         // CancellationHandler
-        Runnable* cancel() override {
+        std::coroutine_handle<> cancel() override {
             // next performWrite() will return true immediately
             len_ = 0;
-            return noop;
+            return std::noop_coroutine();
         }
 
         bool performWrite() {
@@ -89,9 +85,7 @@ auto write(Print* print, const char* dst, size_t len) {
             return *this;
         }
 
-        auto operator co_await() {
-            return Awaitable{print, buf, len, slot};
-        }
+        auto operator co_await() { return Awaitable{print, buf, len, slot}; }
 
         Print* const print;
         const char* buf;

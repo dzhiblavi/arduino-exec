@@ -60,11 +60,10 @@ class Mutex : supp::Pinned {
         auto await_resume() const { return LockGuard{self_}; }
 
         // CancellationHandler
-        Runnable* cancel() override {
+        std::coroutine_handle<> cancel() override {
             unlink();
             self_ = nullptr;
-            caller_.resume();
-            return noop;
+            return caller_;
         }
 
         void takeLock() {

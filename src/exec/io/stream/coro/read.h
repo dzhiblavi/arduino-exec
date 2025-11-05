@@ -19,9 +19,7 @@ auto read(Stream* stream, char* dst, size_t len) {
             , len_{len}
             , slot_{slot} {}
 
-        bool await_ready() {
-            return performRead();
-        }
+        bool await_ready() { return performRead(); }
 
         void await_suspend(std::coroutine_handle<> caller) {
             slot_.installIfConnected(this);
@@ -29,9 +27,7 @@ auto read(Stream* stream, char* dst, size_t len) {
             service<Executor>()->post(this);
         }
 
-        size_t await_resume() const {
-            return read_;
-        }
+        size_t await_resume() const { return read_; }
 
         // Runnable
         Runnable* run() override {
@@ -47,10 +43,10 @@ auto read(Stream* stream, char* dst, size_t len) {
         }
 
         // CancellationHandler
-        Runnable* cancel() override {
+        std::coroutine_handle<> cancel() override {
             // next performRead() will return true immediately
             len_ = 0;
-            return noop;
+            return std::noop_coroutine();
         }
 
         bool performRead() {
@@ -87,9 +83,7 @@ auto read(Stream* stream, char* dst, size_t len) {
             return *this;
         }
 
-        auto operator co_await() {
-            return Awaitable(stream_, dst_, len_, slot_);
-        }
+        auto operator co_await() { return Awaitable(stream_, dst_, len_, slot_); }
 
      private:
         Stream* const stream_;

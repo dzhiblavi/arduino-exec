@@ -116,7 +116,7 @@ TEST_F(t_read, test_cancelled) {
     executor.queued.popFront()->runAll();
     TEST_ASSERT_FALSE(coro.done());
 
-    sig.emit();  // should not unblock
+    sig.emitSync();  // should not unblock
     TEST_ASSERT_FALSE(sig.hasHandler());
     TEST_ASSERT_FALSE(coro.done());
     TEST_ASSERT_EQUAL(1, executor.queued.size());
