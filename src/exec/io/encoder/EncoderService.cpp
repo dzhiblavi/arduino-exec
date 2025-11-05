@@ -7,7 +7,7 @@
 namespace exec {
 
 EncoderService::EncoderService() {
-    if (auto os = service<OS>()) {
+    if (auto os = tryService<OS>()) {
         os->addService(this);
     }
 }

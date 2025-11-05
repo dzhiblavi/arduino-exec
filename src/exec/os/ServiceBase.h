@@ -9,7 +9,7 @@ template <typename Interface, typename Self>
 class ServiceBase : public Service {
  public:
     ServiceBase() {
-        if (auto os = service<OS>()) {
+        if (auto os = tryService<OS>()) {
             os->addService(this);
         }
 

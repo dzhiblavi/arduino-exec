@@ -20,8 +20,13 @@ inline I* instance_ = nullptr;
 }  // namespace detail
 
 template <typename I>
+I* tryService() {
+    return detail::instance_<I>;
+}
+
+template <typename I>
 I* service() {
-    return VERIFY(detail::instance_<I>, F("Service not registered"));
+    return VERIFY(tryService<I>(), F("Service not registered"));
 }
 
 template <typename I, typename S>

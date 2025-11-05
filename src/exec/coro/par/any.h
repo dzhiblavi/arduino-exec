@@ -153,7 +153,7 @@ struct AnyTask : supp::NonCopyable {
     std::coroutine_handle<> coro;
 };
 
-template <typename... Tasks>
+template <Awaitable... Tasks>
 struct [[nodiscard]] Any : supp::NonCopyable {
     using ResultType = std::tuple<awaitable_result_t<Tasks>...>;
     using StateType = AnyState<awaitable_result_t<Tasks>...>;
@@ -232,7 +232,7 @@ struct [[nodiscard]] Any : supp::NonCopyable {
 
 }  // namespace detail
 
-template <typename... Tasks>
+template <Awaitable... Tasks>
 auto any(Tasks... tasks) {
     return detail::Any(std::move(tasks)...);
 }

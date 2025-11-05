@@ -137,7 +137,7 @@ void attachAllTaskCancellation(State* state, Task& task) {
     }
 }
 
-template <typename... Tasks>
+template <Awaitable... Tasks>
 struct [[nodiscard]] All : supp::NonCopyable {
     using StateType = AllState<awaitable_result_t<Tasks>...>;
     using ResultType = std::tuple<awaitable_result_t<Tasks>...>;
@@ -216,7 +216,7 @@ struct [[nodiscard]] All : supp::NonCopyable {
 
 }  // namespace detail
 
-template <typename... Tasks>
+template <Awaitable... Tasks>
 auto all(Tasks... tasks) {
     return detail::All(std::move(tasks)...);
 }
