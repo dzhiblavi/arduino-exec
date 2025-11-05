@@ -19,7 +19,7 @@ TEST_F(t_spawn, simple_spawn) {
     Event event;
 
     auto coro = [&]() -> Async<> {
-        co_await event.wait();
+        (void)co_await event.wait();
         done = true;
     };
 
