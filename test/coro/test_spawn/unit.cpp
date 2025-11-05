@@ -11,7 +11,6 @@ namespace exec {
 
 struct t_spawn : t_coro {
     t_spawn() { setService<Executor>(&executor); }
-
     test::Executor executor;
 };
 
