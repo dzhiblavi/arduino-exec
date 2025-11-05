@@ -21,7 +21,7 @@ inline I* instance_ = nullptr;
 
 template <typename I>
 I* service() {
-    return detail::instance_<I>;
+    return VERIFY(detail::instance_<I>, F("Service not registered"));
 }
 
 template <typename I, typename S>
