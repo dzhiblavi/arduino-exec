@@ -1,6 +1,7 @@
 #pragma once
 
 #include "exec/coro/cancel.h"
+#include "exec/coro/traits.h"
 #include "exec/executor/Executor.h"
 #include "exec/io/stream/Stream.h"
 #include "exec/os/Service.h"
@@ -12,9 +13,9 @@
 
 namespace exec {
 
-auto write(Print* print, const char* dst, size_t len) {
-    struct Awaitable : Runnable, CancellationHandler {
-        Awaitable(Print* print, const char* buf, size_t len, CancellationSlot slot)
+CancellableAwaitable auto write(Print* print, const char* dst, size_t len) {
+    struct Awaiter : Runnable, CancellationHandler {
+        Awaiter(Print* print, const char* buf, size_t len, CancellationSlot slot)
             : print_{print}
             , buf_{buf}
             , len_{len}
@@ -76,14 +77,14 @@ auto write(Print* print, const char* dst, size_t len) {
         std::coroutine_handle<> caller_;
     };
 
-    struct Op {
+    struct Awaitable {
         // CancellableAwaitable
-        Op& setCancellationSlot(CancellationSlot slot) {
+        Awaitable& setCancellationSlot(CancellationSlot slot) {
             this->slot = slot;
             return *this;
         }
 
-        auto operator co_await() { return Awaitable{print, buf, len, slot}; }
+        Awaiter operator co_await() { return Awaiter{print, buf, len, slot}; }
 
         Print* const print;
         const char* buf;
@@ -91,7 +92,7 @@ auto write(Print* print, const char* dst, size_t len) {
         CancellationSlot slot{};
     };
 
-    return Op{print, dst, len};
+    return Awaitable{print, dst, len};
 }
 
 }  // namespace exec

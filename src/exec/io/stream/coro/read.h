@@ -1,6 +1,7 @@
 #pragma once
 
 #include "exec/coro/cancel.h"
+#include "exec/coro/traits.h"
 #include "exec/executor/Executor.h"
 #include "exec/io/stream/Stream.h"
 #include "exec/os/Service.h"
@@ -11,9 +12,9 @@
 
 namespace exec {
 
-auto read(Stream* stream, char* dst, size_t len) {
-    struct Awaitable : Runnable, CancellationHandler {
-        Awaitable(Stream* stream, char* dst, size_t len, CancellationSlot slot)
+CancellableAwaitable auto read(Stream* stream, char* dst, size_t len) {
+    struct Awaiter : Runnable, CancellationHandler {
+        Awaiter(Stream* stream, char* dst, size_t len, CancellationSlot slot)
             : stream_{stream}
             , dst_{dst}
             , len_{len}
@@ -71,17 +72,17 @@ auto read(Stream* stream, char* dst, size_t len) {
         CancellationSlot slot_;
     };
 
-    struct Op : supp::NonCopyable {
-        Op(Stream* stream, char* dst, size_t len) : stream_{stream}, dst_{dst}, len_{len} {}
-        Op(Op&&) = default;
+    struct Awaitable : supp::NonCopyable {
+        Awaitable(Stream* stream, char* dst, size_t len) : stream_{stream}, dst_{dst}, len_{len} {}
+        Awaitable(Awaitable&&) = default;
 
         // CancellableAwaitable
-        Op& setCancellationSlot(CancellationSlot slot) {
+        Awaitable& setCancellationSlot(CancellationSlot slot) {
             slot_ = slot;
             return *this;
         }
 
-        auto operator co_await() { return Awaitable(stream_, dst_, len_, slot_); }
+        Awaiter operator co_await() { return Awaiter(stream_, dst_, len_, slot_); }
 
      private:
         Stream* const stream_;
@@ -90,7 +91,7 @@ auto read(Stream* stream, char* dst, size_t len) {
         CancellationSlot slot_;
     };
 
-    return Op(stream, dst, len);
+    return Awaitable(stream, dst, len);
 }
 
 }  // namespace exec
