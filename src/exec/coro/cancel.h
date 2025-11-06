@@ -3,8 +3,6 @@
 #include <supp/Pinned.h>
 #include <supp/verify.h>
 
-#include <logging/log.h>
-
 #include <coroutine>
 #include <utility>
 
