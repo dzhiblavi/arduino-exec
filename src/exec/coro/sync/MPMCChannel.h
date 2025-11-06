@@ -4,6 +4,7 @@
 #include "exec/Result.h"
 #include "exec/Unit.h"
 #include "exec/coro/cancel.h"
+#include "exec/coro/traits.h"
 
 #include <supp/CircularBuffer.h>
 #include <supp/IntrusiveList.h>
@@ -21,9 +22,8 @@ class MPMCChannel {
  public:
     MPMCChannel() = default;
 
-    auto receive() { return Receive{this}; }
-
-    auto send(T& value) { return Send{this, &value}; }
+    CancellableAwaitable auto receive() { return Receive{this}; }
+    CancellableAwaitable auto send(T& value) { return Send{this, &value}; }
 
  private:
     struct Awaitable : CancellationHandler, supp::IntrusiveListNode {
@@ -43,7 +43,7 @@ class MPMCChannel {
         std::coroutine_handle<> caller = nullptr;
     };
 
-    struct ReceiveAwaitable : Awaitable {
+    struct ReceiveAwaiter : Awaitable {
      public:
         using Awaitable::Awaitable;
 
@@ -51,7 +51,7 @@ class MPMCChannel {
             if (self->buf_.full() && !self->parked_.empty()) {
                 result.emplace(self->buf_.pop());
 
-                auto* sender = static_cast<SendAwaitable*>(self->parked_.popFront());
+                auto* sender = static_cast<SendAwaiter*>(self->parked_.popFront());
                 sender->resume();
                 return true;
             }
@@ -89,15 +89,15 @@ class MPMCChannel {
         Result<T> result;
     };
 
-    struct SendAwaitable : Awaitable {
+    struct SendAwaiter : Awaitable {
      public:
-        SendAwaitable(MPMCChannel* self, T* value, CancellationSlot slot)
+        SendAwaiter(MPMCChannel* self, T* value, CancellationSlot slot)
             : Awaitable(self, slot)
             , value{value} {}
 
         bool await_ready() const {
             if (self->buf_.empty() && !self->parked_.empty()) {
-                auto* receiver = static_cast<ReceiveAwaitable*>(self->parked_.popFront());
+                auto* receiver = static_cast<ReceiveAwaiter*>(self->parked_.popFront());
                 receiver->resume(value);
                 return true;
             }
@@ -147,7 +147,7 @@ class MPMCChannel {
             return *this;
         }
 
-        auto operator co_await() { return ReceiveAwaitable{self_, slot_}; }
+        auto operator co_await() { return ReceiveAwaiter{self_, slot_}; }
 
      private:
         MPMCChannel* self_;
@@ -165,7 +165,7 @@ class MPMCChannel {
             return *this;
         }
 
-        auto operator co_await() { return SendAwaitable{self_, value, slot_}; }
+        auto operator co_await() { return SendAwaiter{self_, value, slot_}; }
 
      private:
         MPMCChannel* self_;

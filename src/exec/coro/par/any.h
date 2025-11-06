@@ -151,7 +151,10 @@ struct AnyTask : supp::NonCopyable {
 };
 
 template <Awaitable... Tasks>
-struct [[nodiscard]] Any : supp::NonCopyable {
+class [[nodiscard]] Any : supp::NonCopyable {
+    struct Awaiter;
+
+ public:
     using ResultType = std::tuple<awaitable_result_t<Tasks>...>;
     using StateType = AnyState<awaitable_result_t<Tasks>...>;
 
@@ -164,15 +167,16 @@ struct [[nodiscard]] Any : supp::NonCopyable {
         return *this;
     }
 
-    auto operator co_await() /*&&*/ { return Awaitable{std::move(tasks_), slot_}; }
+    Awaiter operator co_await() /*&&*/ { return Awaiter{std::move(tasks_), slot_}; }
 
  private:
-    struct Awaitable : supp::Pinned {
-        Awaitable(std::tuple<Tasks...>&& tasks, CancellationSlot slot)
+    struct Awaiter : supp::Pinned {
+        Awaiter(std::tuple<Tasks...>&& tasks, CancellationSlot slot)
             : state_{slot}
-            , tasks_(std::apply(
-                  [&](auto&&... tasks) { return makeTasks(&state_, std::move(tasks)...); },
-                  std::move(tasks))) {}
+            , tasks_(
+                  std::apply(
+                      [&](auto&&... tasks) { return makeTasks(&state_, std::move(tasks)...); },
+                      std::move(tasks))) {}
 
         bool await_ready() {
             std::apply([](auto&... task) { (task.start(), ...); }, tasks_);
@@ -229,7 +233,7 @@ struct [[nodiscard]] Any : supp::NonCopyable {
 }  // namespace detail
 
 template <Awaitable... Tasks>
-auto any(Tasks... tasks) {
+CancellableAwaitable auto any(Tasks... tasks) {
     return detail::Any(std::move(tasks)...);
 }
 

@@ -36,6 +36,11 @@ struct t_async {
     ~t_async() { TEST_ASSERT_EQUAL(0, alloc::allocated_count); }
 };
 
+static_assert(CancellableAwaitable<Async<>>);
+static_assert(CancellableAwaitable<Async<int&>>);
+static_assert(std::same_as<typename Async<>::value_type, Result<Unit>>);
+static_assert(std::same_as<typename Async<int&>::value_type, Result<int&>>);
+
 TEST_F(t_async, initial_suspend) {
     bool done = false;
 

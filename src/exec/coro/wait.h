@@ -2,6 +2,7 @@
 
 #include "exec/Error.h"
 #include "exec/coro/cancel.h"
+#include "exec/coro/traits.h"
 #include "exec/os/TimerService.h"
 
 #include <supp/NonCopyable.h>
@@ -12,9 +13,9 @@
 namespace exec {
 
 // Cancellable delay
-inline auto wait(ttime::Duration d) {
-    struct [[nodiscard]] Awaitable : TimerEntry, CancellationHandler {
-        Awaitable(ttime::Duration d, CancellationSlot slot) : d{d}, slot_{slot} {}
+inline CancellableAwaitable auto wait(ttime::Duration d) {
+    struct [[nodiscard]] Awaiter : TimerEntry, CancellationHandler {
+        Awaiter(ttime::Duration d, CancellationSlot slot) : d{d}, slot_{slot} {}
 
         bool await_ready() {
             if (d.micros() == 0) {
@@ -68,20 +69,20 @@ inline auto wait(ttime::Duration d) {
         std::coroutine_handle<> awaiter_;
     };
 
-    struct Op {
+    struct Awaitable {
         // CancellableAwaitable
-        Op& setCancellationSlot(CancellationSlot slot) {
+        Awaitable& setCancellationSlot(CancellationSlot slot) {
             this->slot = slot;
             return *this;
         }
 
-        auto operator co_await() { return Awaitable{d, slot}; }
+        auto operator co_await() { return Awaiter{d, slot}; }
 
         const ttime::Duration d;
         CancellationSlot slot{};
     };
 
-    return Op{d};
+    return Awaitable{d};
 }
 
 }  // namespace exec

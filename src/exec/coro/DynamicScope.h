@@ -89,8 +89,8 @@ class DynamicScope {
         co_return co_await std::move(awaitable);
     }
 
-    struct JoinAwaitable : CancellationHandler {
-        JoinAwaitable(DynamicScope* self, CancellationSlot slot) : self_{self}, slot_{slot} {}
+    struct JoinAwaiter : CancellationHandler {
+        JoinAwaiter(DynamicScope* self, CancellationSlot slot) : self_{self}, slot_{slot} {}
 
         bool await_ready() const { return self_->size() == 0; }
 
@@ -151,13 +151,13 @@ class DynamicScope {
         }
     }
 
-    auto join() {
-        struct Join {
-            Join(DynamicScope* self) : self_{self} {}
-            auto operator co_await() { return JoinAwaitable{self_, slot_}; }
+    CancellableAwaitable auto join() {
+        struct Awaitable {
+            Awaitable(DynamicScope* self) : self_{self} {}
+            auto operator co_await() { return JoinAwaiter{self_, slot_}; }
 
             // CancellableAwaitable
-            Join& setCancellationSlot(CancellationSlot slot) {
+            Awaitable& setCancellationSlot(CancellationSlot slot) {
                 slot_ = slot;
                 return *this;
             }
@@ -167,7 +167,7 @@ class DynamicScope {
             CancellationSlot slot_;
         };
 
-        return Join{this};
+        return Awaitable{this};
     }
 
  private:

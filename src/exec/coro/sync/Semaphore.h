@@ -2,6 +2,7 @@
 
 #include "exec/Error.h"
 #include "exec/coro/cancel.h"
+#include "exec/coro/traits.h"
 
 #include <supp/IntrusiveList.h>
 #include <supp/NonCopyable.h>
@@ -23,7 +24,7 @@ class Semaphore : supp::NonCopyable {
         return true;
     }
 
-    auto acquire() { return Acquire{this}; }
+    CancellableAwaitable auto acquire() { return Awaitable{this}; }
 
     void release() {
         if (counter_++ != 0 || parked_.empty()) {
@@ -35,8 +36,8 @@ class Semaphore : supp::NonCopyable {
     }
 
  private:
-    struct Awaitable : CancellationHandler, supp::IntrusiveListNode {
-        explicit Awaitable(Semaphore* self, CancellationSlot slot) : self_{self}, slot_{slot} {}
+    struct Awaiter : CancellationHandler, supp::IntrusiveListNode {
+        explicit Awaiter(Semaphore* self, CancellationSlot slot) : self_{self}, slot_{slot} {}
 
         bool await_ready() { return self_->tryAcquire(); }
 
@@ -67,24 +68,24 @@ class Semaphore : supp::NonCopyable {
         std::coroutine_handle<> caller_;
     };
 
-    struct [[nodiscard]] Acquire : supp::NonCopyable {
+    struct [[nodiscard]] Awaitable : supp::NonCopyable {
      public:
-        Acquire(Semaphore* self) : self_{self} {}
+        Awaitable(Semaphore* self) : self_{self} {}
 
         // CancellableAwaitable
-        Acquire& setCancellationSlot(CancellationSlot slot) {
+        Awaitable& setCancellationSlot(CancellationSlot slot) {
             slot_ = slot;
             return *this;
         }
 
-        auto operator co_await() { return Awaitable{self_, slot_}; }
+        Awaiter operator co_await() { return Awaiter{self_, slot_}; }
 
      private:
         Semaphore* self_;
         CancellationSlot slot_{};
     };
 
-    supp::IntrusiveList<Awaitable> parked_;
+    supp::IntrusiveList<Awaiter> parked_;
     int counter_ = 0;
 };
 

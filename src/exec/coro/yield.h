@@ -1,6 +1,7 @@
 #pragma once
 
 #include "exec/Unit.h"
+#include "exec/coro/traits.h"
 #include "exec/executor/Executor.h"
 #include "exec/os/Service.h"
 
@@ -11,9 +12,9 @@
 namespace exec {
 
 // Not cancellable
-inline auto yield() {
-    struct [[nodiscard]] Awaitable : Runnable, supp::Pinned {
-        Awaitable() = default;
+inline Awaitable auto yield() {
+    struct [[nodiscard]] Awaiter : Runnable, supp::Pinned {
+        Awaiter() = default;
 
         constexpr bool await_ready() const { return false; }
 
@@ -29,11 +30,11 @@ inline auto yield() {
         std::coroutine_handle<> caller;
     };
 
-    struct Op {
-        auto operator co_await() const { return Awaitable{}; }
+    struct Awaitable {
+        auto operator co_await() const { return Awaiter{}; }
     };
 
-    return Op{};
+    return Awaitable{};
 }
 
 }  // namespace exec

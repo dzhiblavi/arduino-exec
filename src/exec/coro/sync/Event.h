@@ -2,6 +2,7 @@
 
 #include "exec/Error.h"
 #include "exec/coro/cancel.h"
+#include "exec/coro/traits.h"
 
 #include <supp/IntrusiveList.h>
 #include <supp/NonCopyable.h>
@@ -17,7 +18,7 @@ class Event : supp::Pinned {
 
     bool isSet() const { return fired_; }
 
-    auto wait() { return Wait{this}; }
+    CancellableAwaitable auto wait() { return Awaitable{this}; }
 
     void clear() { fired_ = false; }
 
@@ -29,9 +30,9 @@ class Event : supp::Pinned {
     }
 
  private:
-    struct Awaitable : CancellationHandler, supp::IntrusiveListNode {
+    struct Awaiter : CancellationHandler, supp::IntrusiveListNode {
      public:
-        Awaitable(Event* self, CancellationSlot slot) : self_{self}, slot_{slot} {}
+        Awaiter(Event* self, CancellationSlot slot) : self_{self}, slot_{slot} {}
 
         bool await_ready() { return self_->fired_; }
 
@@ -64,16 +65,16 @@ class Event : supp::Pinned {
         std::coroutine_handle<> caller_ = nullptr;
     };
 
-    struct [[nodiscard]] Wait : supp::NonCopyable {
-        Wait(Event* self) : self_{self} {}
+    struct [[nodiscard]] Awaitable : supp::NonCopyable {
+        Awaitable(Event* self) : self_{self} {}
 
         // CancellableAwaitable
-        Wait& setCancellationSlot(CancellationSlot slot) {
+        Awaitable& setCancellationSlot(CancellationSlot slot) {
             slot_ = slot;
             return *this;
         }
 
-        auto operator co_await() { return Awaitable{self_, slot_}; }
+        Awaiter operator co_await() { return Awaiter{self_, slot_}; }
 
      private:
         Event* self_;
@@ -88,7 +89,7 @@ class Event : supp::Pinned {
         }
     }
 
-    supp::IntrusiveList<Awaitable> parked_;
+    supp::IntrusiveList<Awaiter> parked_;
     bool fired_ = false;
 };
 

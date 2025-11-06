@@ -136,8 +136,12 @@ void attachAllTaskCancellation(State* state, Task& task) {
     }
 }
 
+// CancellableAwaitable
 template <Awaitable... Tasks>
-struct [[nodiscard]] All : supp::NonCopyable {
+class [[nodiscard]] All : supp::NonCopyable {
+    struct Awaiter;
+
+ public:
     using StateType = AllState<awaitable_result_t<Tasks>...>;
     using ResultType = std::tuple<awaitable_result_t<Tasks>...>;
 
@@ -150,15 +154,16 @@ struct [[nodiscard]] All : supp::NonCopyable {
         return *this;
     }
 
-    auto operator co_await() /*&&*/ { return Awaitable{std::move(tasks_), slot_}; }
+    Awaiter operator co_await() { return Awaiter{std::move(tasks_), slot_}; }
 
  private:
-    struct Awaitable : supp::Pinned {
-        Awaitable(std::tuple<Tasks...>&& tasks, CancellationSlot slot)
+    struct Awaiter : supp::Pinned {
+        Awaiter(std::tuple<Tasks...>&& tasks, CancellationSlot slot)
             : state_{slot}
-            , tasks_(std::apply(
-                  [&](auto&&... tasks) { return makeTasks(&state_, std::move(tasks)...); },
-                  std::move(tasks))) {}
+            , tasks_(
+                  std::apply(
+                      [&](auto&&... tasks) { return makeTasks(&state_, std::move(tasks)...); },
+                      std::move(tasks))) {}
 
         bool await_ready() {
             std::apply([](auto&... task) { (task.start(), ...); }, tasks_);
@@ -215,7 +220,7 @@ struct [[nodiscard]] All : supp::NonCopyable {
 }  // namespace detail
 
 template <Awaitable... Tasks>
-auto all(Tasks... tasks) {
+CancellableAwaitable auto all(Tasks... tasks) {
     return detail::All(std::move(tasks)...);
 }
 

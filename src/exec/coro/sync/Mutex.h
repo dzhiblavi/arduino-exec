@@ -1,6 +1,7 @@
 #pragma once
 
 #include "exec/coro/cancel.h"
+#include "exec/coro/traits.h"
 
 #include <supp/IntrusiveList.h>
 #include <supp/NonCopyable.h>
@@ -42,11 +43,11 @@ class Mutex : supp::Pinned {
         return LockGuard{nullptr};
     }
 
-    auto lock() { return Lock{this}; }
+    CancellableAwaitable auto lock() { return Awaitable{this}; }
 
  private:
-    struct Awaitable : CancellationHandler, supp::IntrusiveListNode {
-        Awaitable(Mutex* self, CancellationSlot slot) : self_{self}, slot_{slot} {}
+    struct Awaiter : CancellationHandler, supp::IntrusiveListNode {
+        Awaiter(Mutex* self, CancellationSlot slot) : self_{self}, slot_{slot} {}
 
         bool await_ready() { return self_->tryLockRaw(); }
 
@@ -77,17 +78,17 @@ class Mutex : supp::Pinned {
         std::coroutine_handle<> caller_;
     };
 
-    struct [[nodiscard]] Lock : supp::NonCopyable {
+    struct [[nodiscard]] Awaitable : supp::NonCopyable {
      public:
-        Lock(Mutex* self) : self_{self} {}
+        Awaitable(Mutex* self) : self_{self} {}
 
         // CancellableAwaitable
-        Lock& setCancellationSlot(CancellationSlot slot) {
+        Awaitable& setCancellationSlot(CancellationSlot slot) {
             slot_ = slot;
             return *this;
         }
 
-        auto operator co_await() { return Awaitable{self_, slot_}; }
+        Awaiter operator co_await() { return Awaiter{self_, slot_}; }
 
      private:
         Mutex* self_;
@@ -114,7 +115,7 @@ class Mutex : supp::Pinned {
         parked_.popFront()->takeLock();
     }
 
-    supp::IntrusiveList<Awaitable> parked_;
+    supp::IntrusiveList<Awaiter> parked_;
     bool locked_ = false;
 
     friend class LockGuard;

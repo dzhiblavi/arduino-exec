@@ -1,6 +1,7 @@
 #pragma once
 
 #include "exec/Error.h"
+#include "exec/coro/traits.h"
 #include "exec/os/DeferService.h"
 
 #include <supp/Pinned.h>
@@ -11,9 +12,9 @@
 namespace exec {
 
 // Not cancellable
-inline auto defer(ttime::Duration d) {
-    struct [[nodiscard]] Awaitable : Runnable, supp::Pinned {
-        Awaitable(ttime::Duration d) : d{d} {}
+inline Awaitable auto defer(ttime::Duration d) {
+    struct [[nodiscard]] Awaiter : Runnable, supp::Pinned {
+        Awaiter(ttime::Duration d) : d{d} {}
 
         bool await_ready() {
             if (d.micros() == 0) {
@@ -45,12 +46,12 @@ inline auto defer(ttime::Duration d) {
         ErrCode code_ = ErrCode::Unknown;
     };
 
-    struct Op {
-        auto operator co_await() { return Awaitable{d}; }
+    struct Awaitable {
+        auto operator co_await() { return Awaiter{d}; }
         const ttime::Duration d;
     };
 
-    return Op{d};
+    return Awaitable{d};
 }
 
 }  // namespace exec

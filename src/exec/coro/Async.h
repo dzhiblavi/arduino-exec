@@ -201,11 +201,12 @@ class AsyncPromise<Unit> : public AsyncPromiseBase<Unit> {
 
 }  // namespace detail
 
+// CancellableAwaitable
 template <typename T = Unit>
 class [[nodiscard]] Async : supp::NonCopyable {
  public:
     using promise_type = detail::AsyncPromise<T>;
-    using value_type = T;
+    using value_type = Result<T>;
 
     Async() = default;
     Async(std::coroutine_handle<promise_type> coroutine) : coroutine_(coroutine) {}
@@ -235,11 +236,11 @@ class [[nodiscard]] Async : supp::NonCopyable {
     }
 
     auto operator co_await() {
-        struct Awaitable : supp::Pinned {
-            Awaitable(std::coroutine_handle<promise_type> coroutine)
+        struct Awaiter : supp::Pinned {
+            Awaiter(std::coroutine_handle<promise_type> coroutine)
                 : coroutine_{std::move(coroutine)} {}
 
-            ~Awaitable() {
+            ~Awaiter() {
                 if (!coroutine_) {
                     return;
                 }
@@ -269,7 +270,7 @@ class [[nodiscard]] Async : supp::NonCopyable {
         };
 
         // nullptr coroutine_ means OutOfMemory
-        return Awaitable{std::exchange(coroutine_, nullptr)};
+        return Awaiter{std::exchange(coroutine_, nullptr)};
     }
 
  private:
