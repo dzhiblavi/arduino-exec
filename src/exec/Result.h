@@ -1,6 +1,7 @@
 #pragma once
 
 #include "exec/Error.h"
+#include "exec/Unit.h"
 
 #include <supp/verify.h>
 
@@ -24,7 +25,7 @@ class Result {  // NOLINT
         new (ptr()) T(std::forward<U>(val));
     }
 
-    Result(Result&& r) : code_{r.code_} {  // NOLINT
+    Result(Result&& r) noexcept : code_{r.code_} {  // NOLINT
         if (!hasValue()) {
             return;
         }
@@ -62,7 +63,7 @@ class Result {  // NOLINT
         return *this;
     }
 
-    Result& operator=(Result&& r) {
+    Result& operator=(Result&& r) noexcept {
         if (this == &r) {
             return *this;
         }
@@ -85,15 +86,13 @@ class Result {  // NOLINT
     }
 
     ~Result() {
-        if (!hasValue()) {
-            return;
+        if (hasValue()) {
+            release();
         }
-
-        release();
     }
 
     void setError(ErrCode code) {
-        DASSERT(code != ErrCode::Success, "cannot emplace Result<T> with Success code");
+        DASSERT(code != ErrCode::Success, "cannot setError with Success code");
 
         if (hasValue()) {
             release();
@@ -113,11 +112,9 @@ class Result {  // NOLINT
     }
 
     bool hasValue() const { return code_ == ErrCode::Success; }
-
     explicit operator bool() const { return hasValue(); }
 
     T& operator*() { return get(); }
-
     const T& operator*() const { return get(); }
 
     T get() && {
@@ -147,10 +144,66 @@ class Result {  // NOLINT
     }
 
     T* ptr() { return reinterpret_cast<T*>(data_); }
-
     const T* ptr() const { return reinterpret_cast<const T*>(data_); }
 
     alignas(T) uint8_t data_[sizeof(T)] /* uninitialized */;
+    ErrCode code_ = ErrCode::Unknown;
+};
+
+template <>
+class Result<Unit> {  // NOLINT
+ public:
+    Result() = default;
+
+    Result(Unit) : code_{ErrCode::Success} {}
+
+    explicit Result(ErrCode code) : code_{code} {
+        DASSERT(!hasValue(), "cannot construct Result<Unit> with Success code");
+    }
+
+    Result(const Result& r) : code_{r.code_} {}
+    Result(Result&& r) noexcept : code_{std::exchange(r.code_, ErrCode::Unknown)} {}
+
+    Result& operator=(const Result& r) {
+        if (this == &r) {
+            return *this;
+        }
+
+        code_ = r.code_;
+        return *this;
+    }
+
+    Result& operator=(Result&& r) {
+        if (this == &r) {
+            return *this;
+        }
+
+        code_ = std::exchange(r.code_, ErrCode::Unknown);
+        return *this;
+    }
+
+    void setError(ErrCode code) { code_ = code; }
+    void emplace(Unit) { code_ = ErrCode::Success; }
+
+    bool hasValue() const { return code_ == ErrCode::Success; }
+    explicit operator bool() const { return hasValue(); }
+
+    Unit operator*() const { return unit; }
+
+    Unit get() && {
+        DASSERT(hasValue());
+        code_ = ErrCode::Unknown;
+        return unit;
+    }
+
+    Unit get() const& {
+        DASSERT(hasValue());
+        return unit;
+    }
+
+    ErrCode code() const { return code_; }
+
+ private:
     ErrCode code_ = ErrCode::Unknown;
 };
 
