@@ -1,6 +1,6 @@
 #pragma once
 
-#include "exec/cancel.h"
+#include "exec/coro/cancel.h"
 #include "exec/coro/traits.h"
 
 #include <supp/ManualLifetime.h>
