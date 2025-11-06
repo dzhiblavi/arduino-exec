@@ -291,4 +291,17 @@ class Result<T&> {  // NOLINT
     ErrCode code_ = ErrCode::Unknown;
 };
 
+namespace detail {
+
+template <typename T>
+struct IsResult : std::false_type {};
+
+template <typename T>
+struct IsResult<Result<T>> : std::true_type {};
+
+}  // namespace detail
+
+template <typename T>
+concept IsResult = detail::IsResult<T>::value;
+
 }  // namespace exec

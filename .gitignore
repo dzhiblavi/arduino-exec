@@ -9,3 +9,7 @@
 /pio
 /platforms
 /lib/*
+
+# temporarily ignore
+/src/exec/future
+/test/future

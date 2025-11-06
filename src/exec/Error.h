@@ -9,6 +9,7 @@ enum class [[nodiscard]] ErrCode : uint8_t {
     OutOfMemory,
     Cancelled,
     Exhausted,
+    Abandoned,
     Success,
 };
 
