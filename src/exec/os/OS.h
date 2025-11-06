@@ -13,6 +13,12 @@ class OS : public Service {
     void tick() override;
     ttime::Time wakeAt() const override;
 
+    static void globalAddService(Service* service) {
+        if (auto os = tryService<OS>()) {
+            os->addService(service);
+        }
+    }
+
  private:
     supp::IntrusiveForwardList<Service> services_;
 };

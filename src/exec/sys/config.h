@@ -1,6 +1,6 @@
 #pragma once
 
-#if defined(ARDUINO_AVR_NANO)
+#if defined(ARDUINO_ARCH_AVR)
 
 #define EXEC_ARDUINO
 #define EXEC_ARDUINO_AVR
