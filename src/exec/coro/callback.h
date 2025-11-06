@@ -8,6 +8,8 @@ namespace exec {
 // TODO: add tests?
 template <typename Service>
 Awaitable auto waitCallback(Service& service) {
+    using ResultType = Result<typename Service::CallbackArgType>;
+
     struct Awaiter : CancellationHandler, Callback<typename Service::CallbackArgType> {
         Awaiter(Service& service, CancellationSlot slot) : service_{service}, slot_{slot} {}
 
@@ -19,31 +21,31 @@ Awaitable auto waitCallback(Service& service) {
             service_.setCallback(this);
         }
 
-        ErrCode await_resume() {
+        ResultType await_resume() {
             slot_.clearIfConnected();
             service_.setCallback(nullptr);
-            return code_;
+            return std::move(result_);
         }
 
      private:
         // CancellationHandler
         std::coroutine_handle<> cancel() override {
             DASSERT(caller_ != nullptr);
-            code_ = ErrCode::Cancelled;
+            result_.setError(ErrCode::Cancelled);
             return caller_;
         }
 
         // Callback<>
-        void run(Service::CallbackArgType /*service*/) override {
+        void run(Service::CallbackArgType value) override {
             DASSERT(caller_ != nullptr);
-            code_ = ErrCode::Success;
+            result_.emplace(std::forward<typename Service::CallbackArgType>(value));
             caller_.resume();
         }
 
         Service& service_;
         CancellationSlot slot_;
         std::coroutine_handle<> caller_ = nullptr;
-        ErrCode code_ = ErrCode::Unknown;
+        Result<typename Service::CallbackArgType> result_{};
     };
 
     struct Awaitable {

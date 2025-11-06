@@ -117,6 +117,9 @@ class Result {  // NOLINT
     T& operator*() { return get(); }
     const T& operator*() const { return get(); }
 
+    T* operator->() { return ptr(); }
+    const T* operator->() const { return ptr(); }
+
     T get() && {
         DASSERT(hasValue());
         auto result = std::move(*ptr());
@@ -154,7 +157,6 @@ template <>
 class Result<Unit> {  // NOLINT
  public:
     Result() = default;
-
     Result(Unit) : code_{ErrCode::Success} {}
 
     explicit Result(ErrCode code) : code_{code} {
@@ -182,7 +184,11 @@ class Result<Unit> {  // NOLINT
         return *this;
     }
 
-    void setError(ErrCode code) { code_ = code; }
+    void setError(ErrCode code) {
+        DASSERT(code != ErrCode::Success, "cannot setError with Success code");
+        code_ = code;
+    }
+
     void emplace(Unit) { code_ = ErrCode::Success; }
 
     bool hasValue() const { return code_ == ErrCode::Success; }
@@ -204,6 +210,84 @@ class Result<Unit> {  // NOLINT
     ErrCode code() const { return code_; }
 
  private:
+    ErrCode code_ = ErrCode::Unknown;
+};
+
+template <typename T>
+class Result<T&> {  // NOLINT
+ public:
+    Result() = default;
+
+    explicit Result(ErrCode code) : code_{code} {
+        DASSERT(!hasValue(), "cannot construct Result<T&> with Success code");
+    }
+
+    template <typename U>
+    requires(!std::same_as<std::remove_reference_t<U>, Result>)
+    Result(U& val) : ptr_{&val}
+                   , code_{ErrCode::Success} {}
+
+    Result(Result&& r) noexcept
+        : ptr_{std::exchange(r.ptr_, nullptr)}
+        , code_{std::exchange(r.code_, ErrCode::Unknown)} {}
+
+    Result(const Result& r) : ptr_{r.ptr_}, code_{r.code_} {}
+
+    Result& operator=(const Result& r) {
+        if (this == &r) {
+            return *this;
+        }
+
+        code_ = r.code_;
+        ptr_ = r.ptr_;
+        return *this;
+    }
+
+    Result& operator=(Result&& r) noexcept {
+        if (this == &r) {
+            return *this;
+        }
+
+        code_ = std::exchange(r.code_, ErrCode::Unknown);
+        ptr_ = std::exchange(r.ptr_, nullptr);
+        return *this;
+    }
+
+    void setError(ErrCode code) {
+        DASSERT(code != ErrCode::Success, "cannot setError with Success code");
+        ptr_ = nullptr;
+        code_ = code;
+    }
+
+    template <typename U>
+    void emplace(U& val) {
+        ptr_ = &val;
+        code_ = ErrCode::Success;
+    }
+
+    bool hasValue() const { return code_ == ErrCode::Success; }
+    explicit operator bool() const { return hasValue(); }
+
+    T& operator*() { return get(); }
+    const T& operator*() const { return get(); }
+
+    T* operator->() { return ptr_; }
+    const T* operator->() const { return ptr_; }
+
+    T& get() & {
+        DASSERT(hasValue());
+        return *ptr_;
+    }
+
+    const T& get() const& {
+        DASSERT(hasValue());
+        return *ptr_;
+    }
+
+    ErrCode code() const { return code_; }
+
+ private:
+    T* ptr_ = nullptr;
     ErrCode code_ = ErrCode::Unknown;
 };
 
