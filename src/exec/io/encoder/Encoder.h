@@ -21,9 +21,7 @@ class Encoder {
 
     void tick();
 
-    EncButton& impl() {
-        return impl_;
-    }
+    EncButton& impl() { return impl_; }
 
  protected:
     EncButton impl_;

@@ -1,4 +1,4 @@
-#include "exec/io/int/config.h" // IWYU pragma: keep
+#include "exec/io/int/config.h"  // IWYU pragma: keep
 
 #if defined(EXEC_INT_ARDUINO_AVR)
 

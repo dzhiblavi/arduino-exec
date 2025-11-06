@@ -170,10 +170,9 @@ struct [[nodiscard]] Any : supp::NonCopyable {
     struct Awaitable : supp::Pinned {
         Awaitable(std::tuple<Tasks...>&& tasks, CancellationSlot slot)
             : state_{slot}
-            , tasks_(
-                  std::apply(
-                      [&](auto&&... tasks) { return makeTasks(&state_, std::move(tasks)...); },
-                      std::move(tasks))) {}
+            , tasks_(std::apply(
+                  [&](auto&&... tasks) { return makeTasks(&state_, std::move(tasks)...); },
+                  std::move(tasks))) {}
 
         bool await_ready() {
             std::apply([](auto&... task) { (task.start(), ...); }, tasks_);

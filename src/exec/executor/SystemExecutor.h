@@ -10,9 +10,7 @@ namespace exec {
 
 class SystemExecutor : public Executor, public ServiceBase<Executor, SystemExecutor> {
  public:
-    void post(Runnable* r) override {
-        queue_.pushBack(r);
-    }
+    void post(Runnable* r) override { queue_.pushBack(r); }
 
     // Service
     void tick() override {
