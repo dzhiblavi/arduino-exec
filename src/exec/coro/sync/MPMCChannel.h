@@ -71,9 +71,7 @@ class MPMCChannel {
             self->parked_.pushBack(this);
         }
 
-        Result<T> await_resume() {
-            return result ? std::move(result) : Result<T>{ErrCode::Cancelled};
-        }
+        Result<T> await_resume() { return result ? std::move(result) : err<T>(ErrCode::Cancelled); }
 
         void resume(T* val) {
             slot.clearIfConnected();
@@ -119,7 +117,7 @@ class MPMCChannel {
 
         Result<Unit> await_resume() const {
             // cancel() zeroes the self pointer
-            return self == nullptr ? Result<Unit>{ErrCode::Cancelled} : Result<Unit>(unit);
+            return self == nullptr ? err<Unit>(ErrCode::Cancelled) : ok();
         }
 
         void resume() {

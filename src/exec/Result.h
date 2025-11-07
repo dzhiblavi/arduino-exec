@@ -291,6 +291,20 @@ class Result<T&> {  // NOLINT
     ErrCode code_ = ErrCode::Unknown;
 };
 
+template <typename T>
+Result<T> ok(T value) {
+    return Result<T>{std::move(value)};
+}
+
+Result<Unit> ok() {
+    return Result<Unit>{unit};
+}
+
+template <typename T>
+Result<T> err(ErrCode code) {
+    return Result<T>{code};
+}
+
 namespace detail {
 
 template <typename T>
