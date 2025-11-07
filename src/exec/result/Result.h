@@ -13,6 +13,8 @@ namespace exec {
 template <typename T>
 class Result {  // NOLINT
  public:
+    using ValueType = T;
+
     Result() = default;
 
     explicit Result(ErrCode code) : code_{code} {  // NOLINT
@@ -156,6 +158,8 @@ class Result {  // NOLINT
 template <>
 class Result<Unit> {  // NOLINT
  public:
+    using ValueType = Unit;
+
     Result() = default;
     Result(Unit) : code_{ErrCode::Success} {}
 
@@ -216,6 +220,8 @@ class Result<Unit> {  // NOLINT
 template <typename T>
 class Result<T&> {  // NOLINT
  public:
+    using ValueType = T&;
+
     Result() = default;
 
     explicit Result(ErrCode code) : code_{code} {
@@ -274,6 +280,13 @@ class Result<T&> {  // NOLINT
     T* operator->() { return ptr_; }
     const T* operator->() const { return ptr_; }
 
+    T& get() && {
+        DASSERT(hasValue());
+        auto ptr = ptr_;
+        *this = Result<T&>();
+        return *ptr;
+    }
+
     T& get() & {
         DASSERT(hasValue());
         return *ptr_;
@@ -291,6 +304,8 @@ class Result<T&> {  // NOLINT
     ErrCode code_ = ErrCode::Unknown;
 };
 
+using Status = Result<Unit>;
+
 template <typename T>
 Result<T> ok(T value) {
     return Result<T>{std::move(value)};
@@ -300,7 +315,7 @@ Result<Unit> ok() {
     return Result<Unit>{unit};
 }
 
-template <typename T>
+template <typename T = Unit>
 Result<T> err(ErrCode code) {
     return Result<T>{code};
 }
