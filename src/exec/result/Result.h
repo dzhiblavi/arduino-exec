@@ -5,6 +5,7 @@
 
 #include <supp/verify.h>
 
+#include <concepts>
 #include <new>  // IWYU pragma: keep
 #include <utility>
 

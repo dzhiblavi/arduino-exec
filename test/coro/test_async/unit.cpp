@@ -1,7 +1,6 @@
 #include <exec/coro/Async.h>
 #include <exec/coro/ManualTask.h>
 #include <exec/coro/sync/Event.h>
-#include <exec/sys/memory/usage.h>
 
 #include <utest/utest.h>
 
