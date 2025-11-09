@@ -1,16 +1,29 @@
 #pragma once
 
-#include "exec/Callback.h"
 #include "exec/coro/traits.h"
 
 namespace exec {
 
+template <typename C, typename T>
+concept Callback = requires(C* c, T value) {
+    { c->run(value) } -> std::same_as<void>;
+};
+
+template <typename S>
+concept CallbackService = requires(S& service, typename S::CallbackType* callback) {
+    typename S::CallbackArgType;
+    typename S::CallbackType;
+    requires(Callback<typename S::CallbackType, typename S::CallbackArgType>);
+    { service.setCallback(callback) } -> std::same_as<void>;
+};
+
 // TODO: add tests?
-template <typename Service>
+template <CallbackService Service>
 Awaitable auto waitCallback(Service& service) {
+    using CallbackType = typename Service::CallbackType;
     using ResultType = Result<typename Service::CallbackArgType>;
 
-    struct Awaiter : CancellationHandler, Callback<typename Service::CallbackArgType> {
+    struct Awaiter : CancellationHandler, CallbackType {
         Awaiter(Service& service, CancellationSlot slot) : service_{service}, slot_{slot} {}
 
         bool await_ready() const { return false; }
