@@ -83,12 +83,12 @@ TEST(test_cron_wake_at) {
     auto r3 = Task(inc(c), ttime::Duration(20));
 
     SECTION("no tasks") {
-        TEST_ASSERT_EQUAL(ttime::Time::max().micros(), s.wakeAt().micros());
+        TEST_ASSERT_EQUAL(ttime::Time::max().millis(), s.wakeAt().millis());
     }
 
     SECTION("task ready") {
         s.add(&r1);
-        TEST_ASSERT_EQUAL(ttime::mono::now().micros(), s.wakeAt().micros());
+        TEST_ASSERT_EQUAL(ttime::mono::now().millis(), s.wakeAt().millis());
     }
 
     SECTION("multiple tasks") {
@@ -96,7 +96,7 @@ TEST(test_cron_wake_at) {
         s.add(&r2);
         s.add(&r3);
         s.tick();
-        TEST_ASSERT_EQUAL(10, s.wakeAt().micros());
+        TEST_ASSERT_EQUAL(10, s.wakeAt().millis());
     }
 }
 
@@ -122,7 +122,7 @@ TEST(test_cron_remove) {
         s.remove(&r1);
         s.tick();
         TEST_ASSERT_EQUAL(0, c);
-        TEST_ASSERT_EQUAL(ttime::Time::max().micros(), s.wakeAt().micros());
+        TEST_ASSERT_EQUAL(ttime::Time::max().millis(), s.wakeAt().millis());
     }
 }
 
@@ -270,7 +270,7 @@ TEST(test_cron_remove_then_add_back) {
     TEST_ASSERT_EQUAL(1, c);
 
     // it anyways should be scheduled correctly
-    TEST_ASSERT_EQUAL(30, t.at.micros());
+    TEST_ASSERT_EQUAL(30, t.at.millis());
 
     // but should not be executed while removed
     s.tick();

@@ -18,7 +18,7 @@ inline CancellableAwaitable auto wait(ttime::Duration d) {
         Awaiter(ttime::Duration d, CancellationSlot slot) : d{d}, slot_{slot} {}
 
         bool await_ready() {
-            if (d.micros() == 0) {
+            if (d.millis() == 0) {
                 code_ = ErrCode::Success;
                 return true;
             }

@@ -17,7 +17,7 @@ inline Awaitable auto defer(ttime::Duration d) {
         Awaiter(ttime::Duration d) : d{d} {}
 
         bool await_ready() {
-            if (d.micros() == 0) {
+            if (d.millis() == 0) {
                 code_ = ErrCode::Success;
                 return true;
             }

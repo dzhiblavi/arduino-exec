@@ -68,13 +68,13 @@ TEST(test_wake_at) {
     SystemExecutor exec;
 
     SECTION("empty queue") {
-        TEST_ASSERT_EQUAL(ttime::Time::max().micros(), exec.wakeAt().micros());
+        TEST_ASSERT_EQUAL(ttime::Time::max().millis(), exec.wakeAt().millis());
     }
 
     SECTION("non-empty queue") {
         auto task = runnable([](auto) {});
         exec.post(&task);
-        TEST_ASSERT_EQUAL(ttime::mono::now().micros(), exec.wakeAt().micros());
+        TEST_ASSERT_EQUAL(ttime::mono::now().millis(), exec.wakeAt().millis());
     }
 }
 

@@ -45,7 +45,7 @@ TEST(test_wake_at) {
     OS os;
 
     SECTION("no services") {
-        TEST_ASSERT_EQUAL(ttime::Time::max().micros(), os.wakeAt().micros());
+        TEST_ASSERT_EQUAL(ttime::Time::max().millis(), os.wakeAt().millis());
     }
 
     SECTION("has services") {
@@ -57,7 +57,7 @@ TEST(test_wake_at) {
         os.addService(&b);
         os.addService(&c);
 
-        TEST_ASSERT_EQUAL(ttime::Time(10).micros(), os.wakeAt().micros());
+        TEST_ASSERT_EQUAL(ttime::Time(10).millis(), os.wakeAt().millis());
     }
 }
 

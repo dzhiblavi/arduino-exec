@@ -48,7 +48,7 @@ TEST(test_wake_at) {
     HeapDeferService<2> ds;
 
     SECTION("no defers") {
-        TEST_ASSERT_EQUAL(ttime::Time::max().micros(), ds.wakeAt().micros());
+        TEST_ASSERT_EQUAL(ttime::Time::max().millis(), ds.wakeAt().millis());
     }
 
     SECTION("with defers") {
@@ -56,7 +56,7 @@ TEST(test_wake_at) {
         auto task = makeTask(cnt);
 
         ds.defer(&task, ttime::Time(10));
-        TEST_ASSERT_EQUAL(ttime::Time(10).micros(), ds.wakeAt().micros());
+        TEST_ASSERT_EQUAL(ttime::Time(10).millis(), ds.wakeAt().millis());
     }
 }
 

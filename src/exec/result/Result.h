@@ -312,7 +312,7 @@ Result<T> ok(T value) {
     return Result<T>{std::move(value)};
 }
 
-Result<Unit> ok() {
+inline Result<Unit> ok() {
     return Result<Unit>{unit};
 }
 

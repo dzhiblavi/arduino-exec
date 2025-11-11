@@ -86,7 +86,7 @@ TEST(test_wake_at) {
     HeapTimerService<2> s;
 
     SECTION("no defers") {
-        TEST_ASSERT_EQUAL(ttime::Time::max().micros(), s.wakeAt().micros());
+        TEST_ASSERT_EQUAL(ttime::Time::max().millis(), s.wakeAt().millis());
     }
 
     SECTION("with defers") {
@@ -95,7 +95,7 @@ TEST(test_wake_at) {
         t.at = ttime::Time(10);
 
         s.add(&t);
-        TEST_ASSERT_EQUAL(ttime::Time(10).micros(), s.wakeAt().micros());
+        TEST_ASSERT_EQUAL(ttime::Time(10).millis(), s.wakeAt().millis());
     }
 }
 
