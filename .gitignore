@@ -8,6 +8,7 @@
 # temporarily ignore
 /pio
 /platforms
+/platformio
 /lib/*
 
 # temporarily ignore
