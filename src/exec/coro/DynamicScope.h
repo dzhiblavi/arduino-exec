@@ -8,6 +8,8 @@
 #include <supp/NonCopyable.h>
 #include <supp/Pinned.h>
 
+#include <logging/log.h>
+
 #include <coroutine>
 
 namespace exec {
@@ -78,7 +80,7 @@ class DynamicScope {
         using promise_type = Promise;
         using coroutine_handle_t = std::coroutine_handle<promise_type>;
         Task(coroutine_handle_t coro) : coro_{coro} {}
-        Task(Task&& r) : coro_{std::exchange(r.coro_, nullptr)} {}
+        Task(Task&& r) noexcept : coro_{std::exchange(r.coro_, nullptr)} {}
         Promise* promise() { return &coro_.promise(); }
         coroutine_handle_t coro_;
     };
@@ -100,7 +102,7 @@ class DynamicScope {
         }
 
         std::coroutine_handle<> await_suspend(std::coroutine_handle<> caller) {
-            self_->tasks_.iterate([](Promise& task) { task.start(); });
+            // task has already been started in add()
             if (self_->size_ == 0) {
                 return caller;
             }
@@ -145,10 +147,8 @@ class DynamicScope {
         tasks_.pushBack(task.promise());
         ++size_;
 
-        if (joining()) {
-            // otherwise the join() awaitable will start tasks
-            task.promise()->start();
-        }
+        // Start the task immediately. This may trigger new tasks to be added.
+        task.promise()->start();
     }
 
     CancellableAwaitable auto join() {

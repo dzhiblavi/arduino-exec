@@ -18,6 +18,7 @@ concept CallbackService = requires(S& service, typename S::CallbackType* callbac
 };
 
 // TODO: add tests?
+// This is WIP
 template <CallbackService Service>
 Awaitable auto waitCallback(Service& service) {
     using CallbackType = typename Service::CallbackType;

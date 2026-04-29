@@ -6,6 +6,7 @@
 #include "exec/os/Service.h"
 
 #include <supp/NonCopyable.h>
+#include <logging/log.h>
 
 #include <coroutine>
 #include <utility>

@@ -27,6 +27,7 @@ inline Awaitable auto defer(ttime::Duration d) {
 
         std::coroutine_handle<> await_suspend(std::coroutine_handle<> caller) {
             if (!service<DeferService>()->defer(this, ttime::mono::now() + d)) {
+                code_ = ErrCode::Exhausted;
                 return caller;
             }
 
@@ -39,7 +40,10 @@ inline Awaitable auto defer(ttime::Duration d) {
             return code_;
         }
 
-        void run() override { caller.resume(); }
+        void run() override {
+            code_ = ErrCode::Success;
+            caller.resume();
+        }
 
         const ttime::Duration d;
         std::coroutine_handle<> caller;

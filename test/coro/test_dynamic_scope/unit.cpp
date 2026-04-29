@@ -223,6 +223,37 @@ TEST_F(t_coro, add_while_joining) {
     TEST_ASSERT_TRUE(m.done());
 }
 
+TEST_F(t_coro, add_recursively) {
+    DynamicScope scope;
+    Event e;
+
+    auto task = [&]() -> Async<> {
+        (void)co_await e.wait();
+    };
+
+    auto adder = [&]() -> Async<> {
+        scope.add(task());
+        co_return;
+    };
+
+    auto coro = [&]() -> Async<> {
+        scope.add(adder());
+        scope.add(adder());
+        scope.add(adder());
+        co_await scope.join();
+    };
+
+    auto m = makeManualTask(coro());
+
+    m.start();
+    TEST_ASSERT_FALSE(m.done());
+    TEST_ASSERT_EQUAL(3, scope.size()); // 3 tasks waiting for the event
+
+    e.fireOnce();
+    TEST_ASSERT_TRUE(m.done());
+    TEST_ASSERT_EQUAL(0, scope.size());
+}
+
 }  // namespace exec
 
 TESTS_MAIN

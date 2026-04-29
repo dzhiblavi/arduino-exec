@@ -47,6 +47,7 @@ struct AnyState : CancellationHandler {
             return false;
         }
 
+        // cannot complete because caller is not yet inserted
         for (auto& sig : child_signals_) {
             sig.emitSync();
         }

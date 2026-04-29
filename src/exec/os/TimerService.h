@@ -48,6 +48,8 @@ class HeapTimerService : public TimerService,
         return heap_.front()->at;
     }
 
+    size_t size() const { return heap_.size(); }
+
  private:
     using Comp = decltype([](auto& l, auto& r) { return l.at < r.at; });
     supp::RandomAccessPriorityQueue<TimerEntry, MaxTimers, Comp> heap_;
