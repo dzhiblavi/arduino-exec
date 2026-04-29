@@ -22,6 +22,7 @@ void* allocate(size_t size, const std::nothrow_t&) noexcept {
 
 void deallocate(void* ptr, size_t) noexcept {
     LINFO("-allocated");
+    TEST_ASSERT_TRUE(allocated_count > 0);
     --allocated_count;
     free(ptr);
 }
