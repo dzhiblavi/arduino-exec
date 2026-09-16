@@ -33,6 +33,7 @@ class MPMCChannel {
      protected:
         // CancellationHandler
         std::coroutine_handle<> cancel() override {
+            slot.clearIfConnected();
             unlink();
             self = nullptr;
             return caller;

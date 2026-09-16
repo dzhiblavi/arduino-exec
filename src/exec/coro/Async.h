@@ -1,8 +1,8 @@
 #pragma once
 
-#include "exec/result/Result.h"
 #include "exec/Unit.h"
 #include "exec/coro/cancel.h"
+#include "exec/result/Result.h"
 
 #include "exec/coro/alloc.h"
 #include "exec/coro/traits.h"
@@ -213,6 +213,12 @@ class [[nodiscard]] Async : supp::NonCopyable {
     Async() = default;
     Async(std::coroutine_handle<promise_type> coroutine) : coroutine_(coroutine) {}
     Async(Async&& r) noexcept : coroutine_(std::exchange(r.coroutine_, nullptr)) {}
+    Async& operator=(Async&& r) noexcept {
+        if (this != &r) {
+            coroutine_ = std::exchange(r.coroutine_, nullptr);
+        }
+        return *this;
+    }
 
     ~Async() {
         if (!coroutine_) {
