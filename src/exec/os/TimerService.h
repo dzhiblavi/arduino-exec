@@ -26,7 +26,10 @@ class HeapTimerService : public TimerService,
                          public ServiceBase<TimerService, HeapTimerService<MaxTimers>> {
  public:
     bool add(TimerEntry* t) override {
-        DASSERT(!t->connected());
+        if (t->connected()) {
+            return false;
+        }
+
         return heap_.push(t);
     }
 

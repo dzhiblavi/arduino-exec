@@ -53,6 +53,10 @@ class CancellationSlot {
 
 class CancellationSignal : supp::Pinned {
  public:
+    ~CancellationSignal() {
+        DASSERT(!hasHandler(), "CancellationSignal destroyed with connected handler");
+    }
+
     void emitSync() { emit().resume(); }
 
     [[nodiscard]] std::coroutine_handle<> emit() {
@@ -64,6 +68,7 @@ class CancellationSignal : supp::Pinned {
         return std::exchange(handler_, nullptr)->cancel();
     }
 
+    // Returned slots must not outlive this signal.
     CancellationSlot slot() { return {&handler_}; }
     void clear() { handler_ = nullptr; }
     bool hasHandler() const { return handler_ != nullptr; }

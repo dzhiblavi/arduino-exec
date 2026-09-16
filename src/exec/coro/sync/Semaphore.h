@@ -13,7 +13,10 @@ namespace exec {
 
 class Semaphore : supp::NonCopyable {
  public:
-    explicit Semaphore(int init) : counter_{init} {}
+    explicit Semaphore(int init) : counter_{init} {
+        DASSERT(init >= 0, "Semaphore initial count must be non-negative");
+    }
+    ~Semaphore() { DASSERT(parked_.empty(), "Semaphore destroyed with pending waiters"); }
 
     bool tryAcquire() {
         if (counter_ == 0) {

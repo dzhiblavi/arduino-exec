@@ -34,6 +34,10 @@ class [[nodiscard]] LockGuard {
 class Mutex : supp::Pinned {
  public:
     Mutex() = default;
+    ~Mutex() {
+        DASSERT(!locked_, "Mutex destroyed while locked");
+        DASSERT(parked_.empty(), "Mutex destroyed with pending waiters");
+    }
 
     LockGuard try_lock() {
         if (tryLockRaw()) {
@@ -121,19 +125,19 @@ class Mutex : supp::Pinned {
     friend class LockGuard;
 };
 
-LockGuard::~LockGuard() {
+inline LockGuard::~LockGuard() {
     if (self_ != nullptr) {
         self_->unlock();
     }
 }
 
-void LockGuard::unlock() && {
+inline void LockGuard::unlock() && {
     if (self_ != nullptr) {
         std::exchange(self_, nullptr)->unlock();
     }
 }
 
-LockGuard& LockGuard::operator=(LockGuard&& r) noexcept {
+inline LockGuard& LockGuard::operator=(LockGuard&& r) noexcept {
     if (this == &r) {
         return *this;
     }

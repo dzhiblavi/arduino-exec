@@ -60,6 +60,21 @@ TEST_F(t_async, initial_suspend) {
     TEST_ASSERT_TRUE(done);
 }
 
+TEST_F(t_async, move_assignment_releases_previous) {
+    auto task = []() -> Async<> { co_return; };
+
+    {
+        auto first = task();
+        auto second = task();
+        TEST_ASSERT_EQUAL(2, alloc::allocated_count);
+
+        first = std::move(second);
+        TEST_ASSERT_EQUAL(1, alloc::allocated_count);
+    }
+
+    TEST_ASSERT_EQUAL(0, alloc::allocated_count);
+}
+
 TEST_F(t_async, co_return_void) {
     bool done = false;
 

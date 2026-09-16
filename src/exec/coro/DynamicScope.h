@@ -107,6 +107,7 @@ class DynamicScope {
                 return caller;
             }
 
+            DASSERT(!self_->joining(), "DynamicScope already has a joiner");
             self_->caller_ = caller;
             slot_.installIfConnected(this);
             return std::noop_coroutine();
@@ -151,6 +152,7 @@ class DynamicScope {
         task.promise()->start();
     }
 
+    // Only one join() may be active at a time.
     CancellableAwaitable auto join() {
         struct Awaitable {
             Awaitable(DynamicScope* self) : self_{self} {}

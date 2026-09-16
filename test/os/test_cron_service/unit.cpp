@@ -75,6 +75,51 @@ TEST(test_cron_interval) {
     TEST_ASSERT_EQUAL(2, c1);
 }
 
+TEST(test_cron_duplicate_rejected) {
+    HeapCronService<2> s;
+
+    int cnt = 0;
+    auto task = Task(inc(cnt), ttime::Duration(10));
+
+    TEST_ASSERT_TRUE(s.add(&task));
+    TEST_ASSERT_FALSE(s.add(&task));
+
+    s.tick();
+    TEST_ASSERT_EQUAL(1, cnt);
+    TEST_ASSERT_TRUE(s.remove(&task));
+}
+
+TEST(test_cron_zero_interval_rejected) {
+    HeapCronService<1> s;
+
+    int cnt = 0;
+    auto task = Task(inc(cnt), ttime::Duration(0));
+
+    TEST_ASSERT_FALSE(s.add(&task));
+    s.tick();
+    TEST_ASSERT_EQUAL(0, cnt);
+}
+
+TEST(test_cron_zero_interval_set_in_callback) {
+    HeapCronService<1> s;
+
+    int cnt = 0;
+    auto task = Task(
+        [&](auto* self) {
+            ++cnt;
+            self->interval = ttime::Duration(0);
+        },
+        ttime::Duration(10));
+
+    TEST_ASSERT_TRUE(s.add(&task));
+    s.tick();
+    TEST_ASSERT_EQUAL(1, cnt);
+    TEST_ASSERT_FALSE(task.connected());
+
+    s.tick();
+    TEST_ASSERT_EQUAL(1, cnt);
+}
+
 TEST(test_cron_wake_at) {
     HeapCronService<3> s;
     int c = 0;

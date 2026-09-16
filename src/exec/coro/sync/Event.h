@@ -15,6 +15,7 @@ namespace exec {
 class Event : supp::Pinned {
  public:
     Event() = default;
+    ~Event() { DASSERT(parked_.empty(), "Event destroyed with pending waiters"); }
 
     bool isSet() const { return fired_; }
 

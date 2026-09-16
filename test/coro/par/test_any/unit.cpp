@@ -54,6 +54,7 @@ TEST_F(t_coro, connects_cancellation) {
 
     e1.fireOnce();
     TEST_ASSERT_TRUE(coro.done());
+    TEST_ASSERT_FALSE(sig.hasHandler());
 }
 
 TEST_F(t_coro, cancel_none_completed) {

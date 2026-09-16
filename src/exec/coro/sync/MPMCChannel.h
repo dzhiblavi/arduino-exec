@@ -21,6 +21,7 @@ template <typename T, size_t Capacity>
 class MPMCChannel {
  public:
     MPMCChannel() = default;
+    ~MPMCChannel() { DASSERT(parked_.empty(), "MPMCChannel destroyed with pending waiters"); }
 
     CancellableAwaitable auto receive() { return Receive{this}; }
     CancellableAwaitable auto send(T& value) { return Send{this, &value}; }

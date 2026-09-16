@@ -7,6 +7,7 @@ namespace exec {
 class OS : public Service {
  public:
     OS();
+    ~OS();
     void addService(Service* s);
 
     // Service

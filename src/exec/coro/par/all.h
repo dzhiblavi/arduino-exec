@@ -221,6 +221,7 @@ class [[nodiscard]] All : supp::NonCopyable {
 
 template <Awaitable... Tasks>
 CancellableAwaitable auto all(Tasks... tasks) {
+    static_assert(sizeof...(Tasks) <= 255, "all() supports at most 255 tasks");
     return detail::All(std::move(tasks)...);
 }
 

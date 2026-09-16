@@ -215,19 +215,13 @@ class [[nodiscard]] Async : supp::NonCopyable {
     Async(Async&& r) noexcept : coroutine_(std::exchange(r.coroutine_, nullptr)) {}
     Async& operator=(Async&& r) noexcept {
         if (this != &r) {
+            reset();
             coroutine_ = std::exchange(r.coroutine_, nullptr);
         }
         return *this;
     }
 
-    ~Async() {
-        if (!coroutine_) {
-            return;
-        }
-
-        // Async<T> has not been consumed
-        coroutine_.destroy();
-    }
+    ~Async() { reset(); }
 
     // CancellableAwaitable
     Async& setCancellationSlot(CancellationSlot slot) & {
@@ -282,6 +276,14 @@ class [[nodiscard]] Async : supp::NonCopyable {
     }
 
  private:
+    void reset() noexcept {
+        if (!coroutine_) {
+            return;
+        }
+
+        // Async<T> has not been consumed
+        std::exchange(coroutine_, nullptr).destroy();
+    }
     std::coroutine_handle<promise_type> coroutine_ = nullptr;
 };
 

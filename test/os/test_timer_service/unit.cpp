@@ -50,6 +50,22 @@ TEST(test_timer_ready) {
     TEST_ASSERT_EQUAL(1, cnt);
 }
 
+TEST(test_timer_duplicate_rejected) {
+    int cnt = 0;
+    auto t = makeTask(cnt);
+    HeapTimerService<2> s;
+
+    t.at = ttime::Time();
+
+    TEST_ASSERT_TRUE(s.add(&t));
+    TEST_ASSERT_FALSE(s.add(&t));
+    TEST_ASSERT_EQUAL(1, s.size());
+
+    s.tick();
+    TEST_ASSERT_EQUAL(1, cnt);
+    TEST_ASSERT_EQUAL(0, s.size());
+}
+
 TEST(test_timer_cancel_ok) {
     int cnt = 0;
     auto t = makeTask(cnt);

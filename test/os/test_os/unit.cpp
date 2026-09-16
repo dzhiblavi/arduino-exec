@@ -61,6 +61,17 @@ TEST(test_wake_at) {
     }
 }
 
+TEST(test_registry_lifetime) {
+    TEST_ASSERT_NULL(tryService<OS>());
+
+    {
+        OS os;
+        TEST_ASSERT_EQUAL_PTR(&os, tryService<OS>());
+    }
+
+    TEST_ASSERT_NULL(tryService<OS>());
+}
+
 }  // namespace exec
 
 TESTS_MAIN

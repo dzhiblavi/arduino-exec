@@ -9,6 +9,16 @@
 
 namespace exec {
 
+namespace test {
+
+size_t lockGuardSizeFromAnotherTranslationUnit();
+
+}  // namespace test
+
+TEST(header_is_linkable_from_multiple_translation_units) {
+    TEST_ASSERT_EQUAL(sizeof(LockGuard), test::lockGuardSizeFromAnotherTranslationUnit());
+}
+
 struct t_mutex : t_coro {
     Mutex m;
 };

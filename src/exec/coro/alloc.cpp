@@ -13,8 +13,13 @@ size_t allocatedCount() noexcept {
 }
 
 __attribute__((weak)) void* allocate(size_t size, const std::nothrow_t& tag) noexcept {
-    ++allocated_count_;
-    return ::operator new(size, tag);
+    auto* ptr = ::operator new(size, tag);
+
+    if (ptr != nullptr) {
+        ++allocated_count_;
+    }
+
+    return ptr;
 }
 
 __attribute__((weak)) void deallocate(void* ptr, size_t) noexcept {

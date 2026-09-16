@@ -37,7 +37,13 @@ template <int MaxTasks>
 class HeapCronService : public CronService,
                         public ServiceBase<CronService, HeapCronService<MaxTasks>> {
  public:
-    bool add(CronTask* task) override { return heap_.push(task); }
+    bool add(CronTask* task) override {
+        if (task->connected() || task->interval.millis() == 0) {
+            return false;
+        }
+
+        return heap_.push(task);
+    }
     bool remove(CronTask* task) override { return heap_.erase(task); }
 
     // Service
@@ -46,11 +52,21 @@ class HeapCronService : public CronService,
 
         while (!heap_.empty() && now >= heap_.front()->at) {
             auto* front = heap_.front();
+
+            if (front->interval.millis() == 0) {
+                heap_.pop();
+                continue;
+            }
+
             front->at = now + front->interval;
             front->run();  // may call remove()
 
             if (front->connected()) {
-                heap_.fix(front);
+                if (front->interval.millis() == 0) {
+                    heap_.erase(front);
+                } else {
+                    heap_.fix(front);
+                }
             }
         }
     }

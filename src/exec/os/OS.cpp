@@ -8,6 +8,10 @@ OS::OS() {
     setService<OS>(this);
 }
 
+OS::~OS() {
+    unsetService<OS>(this);
+}
+
 void OS::tick() {
     services_.iterate([](Service& s) { s.tick(); });
 }

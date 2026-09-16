@@ -16,7 +16,7 @@ class ServiceBase : public Service {
         setService<Interface>(static_cast<Self*>(this));
     }
 
-    ~ServiceBase() { setService<Interface>(static_cast<Interface*>(nullptr)); }
+    ~ServiceBase() { unsetService<Interface>(static_cast<Self*>(this)); }
 };
 
 }  // namespace exec

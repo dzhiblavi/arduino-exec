@@ -55,6 +55,9 @@ class ManualTask : supp::NonCopyable {
     using coroutine_handle_t = std::coroutine_handle<promise_type>;
 
     ManualTask(coroutine_handle_t coro) : coroutine_{coro} {}
+
+    // Precondition: r has not been started. After start(), the coroutine promise is bound to
+    // r.result_ and the task must remain at the same address until completion.
     ManualTask(ManualTask&& r) noexcept : coroutine_{std::exchange(r.coroutine_, nullptr)} {}
 
     ~ManualTask() {

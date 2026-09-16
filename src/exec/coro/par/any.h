@@ -39,7 +39,12 @@ struct AnyState : CancellationHandler {
             return doCancel();
         }
 
-        return cur_counter == 0 ? std::exchange(caller, nullptr) : std::noop_coroutine();
+        if (cur_counter == 0) {
+            slot_.clearIfConnected();
+            return std::exchange(caller, nullptr);
+        }
+
+        return std::noop_coroutine();
     }
 
     bool await_ready() {
@@ -76,6 +81,7 @@ struct AnyState : CancellationHandler {
         }
 
         if (all_done()) {
+            slot_.clearIfConnected();
             return a_caller;
         }
 
@@ -235,6 +241,8 @@ class [[nodiscard]] Any : supp::NonCopyable {
 
 template <Awaitable... Tasks>
 CancellableAwaitable auto any(Tasks... tasks) {
+    static_assert(sizeof...(Tasks) > 0, "any() requires at least one task");
+    static_assert(sizeof...(Tasks) <= 255, "any() supports at most 255 tasks");
     return detail::Any(std::move(tasks)...);
 }
 
