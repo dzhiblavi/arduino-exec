@@ -60,6 +60,16 @@ TEST_F(t_async, initial_suspend) {
     TEST_ASSERT_TRUE(done);
 }
 
+TEST_F(t_async, manual_task_promise_allocation_is_tracked) {
+    auto coro = []() -> Async<> { co_return; };
+
+    auto task = makeManualTask(coro());
+    TEST_ASSERT_EQUAL(2, alloc::allocated_count);
+
+    task.start();
+    TEST_ASSERT_EQUAL(0, alloc::allocated_count);
+}
+
 TEST_F(t_async, move_assignment_releases_previous) {
     auto task = []() -> Async<> { co_return; };
 

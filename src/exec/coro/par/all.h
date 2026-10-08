@@ -1,5 +1,6 @@
 #pragma once
 
+#include "exec/coro/alloc.h"
 #include "exec/coro/cancel.h"
 #include "exec/coro/traits.h"
 
@@ -78,7 +79,7 @@ struct AllState : CancellationHandler {
 
 template <typename T, size_t Index, typename State>
 struct AllTask : supp::NonCopyable {
-    struct promise_type {
+    struct promise_type : alloc::PromiseAllocator {
         promise_type(auto&& /*task*/, State* state) : state{state} {}
 
         auto get_return_object() {

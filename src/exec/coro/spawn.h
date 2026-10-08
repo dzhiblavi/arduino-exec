@@ -1,6 +1,7 @@
 #pragma once
 
 #include "exec/Runnable.h"
+#include "exec/coro/alloc.h"
 #include "exec/coro/traits.h"
 #include "exec/executor/Executor.h"
 #include "exec/os/Service.h"
@@ -16,7 +17,7 @@ namespace exec {
 namespace detail {
 
 template <typename T>
-struct SpawnPromise : Runnable {
+struct SpawnPromise : Runnable, alloc::PromiseAllocator {
     using coroutine_handle_t = std::coroutine_handle<SpawnPromise<T>>;
 
     coroutine_handle_t handle() { return coroutine_handle_t::from_promise(*this); }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "exec/Unit.h"
+#include "exec/coro/alloc.h"
 #include "exec/coro/cancel.h"
 #include "exec/coro/traits.h"
 
@@ -15,7 +16,7 @@
 namespace exec {
 
 class DynamicScope {
-    struct Promise : supp::IntrusiveListNode {
+    struct Promise : supp::IntrusiveListNode, alloc::PromiseAllocator {
         using coroutine_handle_t = std::coroutine_handle<Promise>;
 
         template <Awaitable A>

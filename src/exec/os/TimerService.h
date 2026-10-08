@@ -54,8 +54,13 @@ class HeapTimerService : public TimerService,
     size_t size() const { return heap_.size(); }
 
  private:
-    using Comp = decltype([](auto& l, auto& r) { return l.at < r.at; });
-    supp::RandomAccessPriorityQueue<TimerEntry, MaxTimers, Comp> heap_;
+    struct TimerEntryEarlier {
+        constexpr bool operator()(const TimerEntry& l, const TimerEntry& r) const {
+            return l.at < r.at;
+        }
+    };
+
+    supp::RandomAccessPriorityQueue<TimerEntry, MaxTimers, TimerEntryEarlier> heap_;
 };
 
 }  // namespace exec

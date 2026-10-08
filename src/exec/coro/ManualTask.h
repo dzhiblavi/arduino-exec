@@ -1,5 +1,6 @@
 #pragma once
 
+#include "exec/coro/alloc.h"
 #include "exec/coro/traits.h"
 
 #include <supp/ManualLifetime.h>
@@ -16,7 +17,7 @@ class ManualTask;
 namespace detail {
 
 template <typename T>
-struct ManualPromise {
+struct ManualPromise : alloc::PromiseAllocator {
  public:
     auto get_return_object() {
         return std::coroutine_handle<ManualPromise<T>>::from_promise(*this);
